@@ -124,7 +124,7 @@ Esta es la estructura de carpetas generada hasta el punto alcanzado en el proces
 - Unión de valence y arousal
 
 ---
-
+```bash
 Proyecto_MIR/
 │
 ├── data/
@@ -160,7 +160,7 @@ Proyecto_MIR/
 │   ├── scripts04_generate_spectrograms.py    # Generación de espectrogramas
 │   └── scripts05_merge_valence.py        # Agrega valence + arousal (energy)
 └──
-
+```
 
 Se verificó que `tracks.csv` tiene **dos niveles de encabezado (MultiIndex)**, mientras que `echonest.csv` tiene **tres niveles**.
 
