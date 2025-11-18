@@ -89,3 +89,231 @@ conda env create -f environment.yaml
 conda activate mem-env
 ```
 
+
+# Procesamiento del Conjunto de Datos FMA (Free Music Archive)
+Proyecto MIR — Música, Emociones y Representaciones
+
+Este documento describe de forma detallada cada uno de los pasos realizados para construir el pipeline de datos basado en el conjunto de datos **FMA (Free Music Archive)**, desde la descarga de metadatos y audio hasta la extracción de características y la preparación del conjunto final para el modelado emocional.
+
+---
+
+# 1. Descarga y estructura del conjunto de datos
+
+## 1.1. Descarga de FMA Small y metadatos
+
+Se descargaron dos componentes fundamentales:
+
+- `fma_small.zip` — contiene 8,000 pistas de audio en formato `.mp3`.
+- `fma_metadata.zip` — contiene los archivos:
+  - `tracks.csv`
+  - `genres.csv`
+  - `features.csv`
+  - `echonest.csv`
+
+# Estructura de Carpetas del Proyecto MIR (FMA)
+
+Este documento describe la estructura completa de directorios utilizada en el proyecto MIR basado en el dataset FMA (Free Music Archive). Incluye archivos de audio, metadatos, scripts, datos procesados y resultados.
+
+# Estructura Actual del Proyecto MIR (FMA)
+Esta es la estructura de carpetas generada hasta el punto alcanzado en el procesamiento:
+- Descarga de FMA small
+- Descarga de metadatos
+- Filtrado por idioma
+- Extracción de LLDs
+- Generación de espectrogramas
+- Unión de valence y arousal
+
+---
+```bash
+Proyecto_MIR/
+│
+├── data/
+│   ├── raw/
+│   │   ├── fma_small/                 # Audio original (.mp3)
+│   │   │   ├── 000/
+│   │   │   ├── 001/
+│   │   │   ├── ...
+│   │   │   └── 007/
+│   │   │
+│   │   └── fma_metadata/              # Metadatos descargados
+│   │       ├── tracks.csv
+│   │       ├── features.csv
+│   │       ├── genres.csv
+│   │       └── echonest.csv
+│   │
+│   ├── intermediate/
+│   │   └── feats_raw/                 # LLDs por track (temporales)
+│   │
+│   └── processed/
+│       ├── features/                  # DataFrame final con características
+│       │   └── df_feats.csv
+│       │
+│       └── spectrograms/              # Espectrogramas log-Mel generados
+│           ├── 000001.png
+│           ├── 000002.png
+│           └── ...
+│
+├── scripts/
+│   ├── scripts01_download_fma.py        # Descarga fma_small + metadata
+│   ├── scripts02_filter_english.py      # Filtro por idioma (language_code = 'en')
+│   ├── scripts03_extract_audio_features.py   # Extracción LLD + MFCC
+│   ├── scripts04_generate_spectrograms.py    # Generación de espectrogramas
+│   └── scripts05_merge_valence.py        # Agrega valence + arousal (energy)
+└──
+```
+
+Se verificó que `tracks.csv` tiene **dos niveles de encabezado (MultiIndex)**, mientras que `echonest.csv` tiene **tres niveles**.
+
+---
+
+# 2. Identificación del idioma de cada canción
+
+El archivo `tracks.csv` contiene una columna clave: ("track", "language_code") 
+que sigue códigos ISO del idioma del artista (en, es, fr, de…).
+
+Se desarrolló el script: scripts02_filter_english.py
+
+Este script:
+
+1. Detecta automáticamente los niveles del encabezado del CSV.
+2. Carga el MultiIndex correctamente.
+3. Verifica que la columna `language_code` existe.
+4. Filtra únicamente los tracks cuyo idioma = `"en"`.
+
+El resultado es una lista: english_ids = [track_id1, track_id2, ...] 
+con todas las pistas en inglés.
+
+---
+
+# 3. Extracción de características de audio (LLDs y MFCC)
+
+El script: scripts03_extract_audio_features.py
+
+procesa únicamente los `track_id` en inglés.
+
+Características extraídas:
+
+- RMS
+- Zero Crossing Rate
+- Spectral Centroid
+- Spectral Bandwidth
+- Spectral Rolloff
+- Chroma STFT
+- MFCC (13 coeficientes)
+- Delta MFCC
+- Delta-Delta MFCC
+
+Cada archivo `.mp3` se cargó usando **librosa**, y se generó un DataFrame `df_feats` donde:
+
+- filas = track_id
+- columnas = características de audio
+
+Ejemplo: df_feats.loc[1234, ["mfcc_1", "mfcc_2", "spectral_centroid", ...]]
+
+
+---
+
+# 4. Generación de espectrogramas (para modelos CNN)
+
+El script:  genera y guarda espectrogramas log-mel para cada pista en inglés.
+Los espectrogramas se exportan como imágenes `.png` o matrices `.npy` en: data/processed/spectrograms/{track_id}.png
+
+
+Parámetros:
+
+- 128 bandas Mel
+- Ventana: 2048
+- Hop length: 512
+
+Estos espectrogramas se utilizarán posteriormente para modelos de visión profunda.
+
+---
+
+# 5. Obtención de características de valence y arousal desde echonest.csv
+
+El archivo `echonest.csv` incluye múltiples grupos de características, entre ellas:
+
+- `("echonest", "audio_features", "valence")`
+- `("echonest", "audio_features", "energy")` (utilizada como proxy de arousal)
+
+Se creó el script: scripts05_merge_valence.py
+
+Este:
+
+1. Carga `echonest.csv` con su MultiIndex de 3 niveles.
+2. Extrae únicamente las columnas relevantes:
+   - `valence`
+   - `energy` → renombrada a `arousal`
+3. Une estas columnas al DataFrame `df_feats`.
+
+Resultado final parcial:
+
+
+Ahora cada canción tiene:
+
+- características de audio (LLDs, MFCC)
+- valence
+- arousal
+
+---
+
+# 6. Construcción del plano emocional (4 cuadrantes)
+
+Como la literatura del artículo base usa un modelo de cuatro emociones, el proyecto utiliza:
+
+| Cuadrante | Valence | Arousal | Emoción |
+|----------|---------|---------|---------|
+| Q1       | +       | +       | Happy / Energetic |
+| Q2       | -       | +       | Angry / Tense |
+| Q3       | -       | -       | Sad |
+| Q4       | +       | -       | Calm / Relaxed |
+
+Se implementará en: scripts06_map_emotions.py
+
+
+Función:
+
+- Normaliza valence/arousal
+- Determina el cuadrante
+- Asigna una etiqueta emocional
+
+---
+
+# 7. Resultado final
+
+El dataset final contiene, por cada canción:
+
+- `track_id`
+- características acústicas (LLDs, MFCCs)
+- espectrograma
+- `valence`
+- `arousal`
+- `emotion_4Q` (categoría final)
+
+Este DataFrame está listo para:
+
+- entrenamiento de modelos supervisados
+- clasificación emocional
+- análisis comparativo de enfoques de audio, espectrograma y emoción
+
+---
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
