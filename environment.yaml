@@ -1,0 +1,17 @@
+name: mem-env
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - librosa
+  - scikit-learn
+  - matplotlib
+  - seaborn
+  - jupyterlab
+  - ipykernel
+  - pandas
+  - numpy
+  - pip:
+      - transformers
