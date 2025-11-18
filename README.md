@@ -125,7 +125,7 @@ Esta es la estructura de carpetas generada hasta el punto alcanzado en el proces
 
 ---
 ```bash
-Proyecto_MIR/
+ExtractData/
 │
 ├── data/
 │   ├── raw/
