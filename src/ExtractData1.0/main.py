@@ -5,7 +5,7 @@ Created on Sun Nov 16 16:04:48 2025
 @author: Brenda Tránsito
 """
 from scripts01_download_fma import download_fma_medium
-from scripts01_download_fma_medium import extract_fma_medium
+from scripts01_download_fma_medium import extract_fma_medium_and_metadata
 from scripts02_filter_english import filter_english_tracks
 from scripts03_extract_audio_features import extract_audio_features
 from scripts04_generate_spectrograms import generate_spectrograms
@@ -45,7 +45,7 @@ SPEC_DIR = str(SPEC_DIR)
 #=== PIPELINE COMPLETO CON FMA_MEDIUM ===#
 download_fma_medium()
 
-#extract_fma_medium()
+#extract_fma_medium_and_metadata()
 
 # === 1. Filtrar inglés ===
 #english_ids = filter_english_tracks(META)
