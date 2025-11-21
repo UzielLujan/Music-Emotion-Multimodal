@@ -8,22 +8,27 @@ Created on Mon Nov 17 09:55:12 2025
 import os
 import zipfile
 
-def extract_fma_medium():
-    raw_dir = "C:/Users/Brenda Tránsito/Documents/Maestría/Tercer Semestre/MIR/Proyecto/Proyecto_MIR/data/raw/"
-    zip_path = os.path.join(raw_dir, "fma_medium.zip")
-    extract_path = os.path.join(raw_dir, "fma_medium")
 
-    if not os.path.exists(zip_path):
+from pathlib import Path
+
+def extract_fma_medium():
+    # Ruta absoluta a data/raw basada en la ubicación de este script
+    base_dir = Path(__file__).resolve().parent.parent.parent  # .../Music-Emotion-Multimodal/
+    raw_dir = base_dir / 'src' / 'data' / 'raw'
+    zip_path = raw_dir / 'fma_medium.zip'
+    extract_path = raw_dir / 'fma_medium'
+
+    if not zip_path.exists():
         raise FileNotFoundError(f"No existe {zip_path}. Descarga fma_medium.zip primero.")
 
-    if os.path.exists(extract_path):
+    if extract_path.exists():
         print("fma_medium ya está extraída.")
-        return extract_path
+        return str(extract_path)
 
     print("Extrayendo fma_medium.zip...")
-    with zipfile.ZipFile(zip_path, "r") as z:
-        z.extractall(raw_dir)
+    with zipfile.ZipFile(str(zip_path), "r") as z:
+        z.extractall(str(raw_dir))
 
     print("Extracción completada.")
-    return extract_path
+    return str(extract_path)
 

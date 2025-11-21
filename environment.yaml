@@ -13,5 +13,15 @@ dependencies:
   - ipykernel
   - pandas
   - numpy
+  - pathlib
+  - lyricsgenius
+  - zipfile
+  - urllib.request
+  - shutil
+  - tqdm
+  - librosa.display
+  - matplotlib.pyplot
+  - scipy
+  - scikit-learn.metrics
   - pip:
       - transformers

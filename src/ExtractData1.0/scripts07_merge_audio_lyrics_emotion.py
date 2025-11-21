@@ -8,7 +8,7 @@ Created on Mon Nov 17 09:37:04 2025
 import os
 import pandas as pd
 
-def merge_all(df_audio_va, lyrics_path="C:/Users/Brenda Tránsito/Documents/Maestría/Tercer Semestre/MIR/Proyecto/Proyecto_MIR/data/processed/lyrics.csv"):
+def merge_all(df_audio_va, lyrics_path):
     """
     Une en un solo DataFrame:
     - Características de audio (df_audio_va)
