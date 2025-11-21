@@ -4,6 +4,7 @@ Created on Sun Nov 16 16:04:48 2025
 
 @author: Brenda Tránsito
 """
+from scripts01_download_fma import download_fma_medium
 from scripts01_download_fma_medium import extract_fma_medium
 from scripts02_filter_english import filter_english_tracks
 from scripts03_extract_audio_features import extract_audio_features
@@ -42,31 +43,32 @@ AUDIO = str(AUDIO)
 SPEC_DIR = str(SPEC_DIR)
 
 #=== PIPELINE COMPLETO CON FMA_MEDIUM ===#
+download_fma_medium()
 
 #extract_fma_medium()
 
 # === 1. Filtrar inglés ===
-english_ids = filter_english_tracks(META)
+#english_ids = filter_english_tracks(META)
 
 # === 2. Audio features ===
-df_feats = extract_audio_features(english_ids, AUDIO)
+#df_feats = extract_audio_features(english_ids, AUDIO)
 
 # === 3. Espectrogramas ===
-generate_spectrograms(english_ids, AUDIO, SPEC_DIR)
+#generate_spectrograms(english_ids, AUDIO, SPEC_DIR)
 
 # === 4. Valence & arousal ===
-df_va = add_valence_arousal(df_feats, META)
+#df_va = add_valence_arousal(df_feats, META)
 
 # === 5. Merge to df_feats ===
-df_merged = merge_valence_arousal(df_feats, META)
+#df_merged = merge_valence_arousal(df_feats, META)
 
 # === 6. PREDICT EMOTIONS ===
 
-df_va = add_emotion_labels(df_merged)
+#df_va = add_emotion_labels(df_merged)
 
 # === 7. Descargar letras de Genius ===
 
 #fetch_lyrics(english_ids, META)
 
 # === 7. Unir letras ===
-df_final = merge_lyrics(df_va, PROCESSED)
+#df_final = merge_lyrics(df_va, PROCESSED)

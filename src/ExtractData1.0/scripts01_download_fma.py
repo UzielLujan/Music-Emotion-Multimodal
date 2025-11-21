@@ -43,26 +43,26 @@ def safe_extract(zip_path, extract_to):
 
 from pathlib import Path
 
-def download_fma_full():
+def download_fma_medium():
     # Ruta absoluta a data/raw basada en la ubicación de este script
-    base_dir = Path(__file__).resolve().parent.parent.parent / 'src' / 'data' / 'raw'
+    base_dir = Path(__file__).resolve().parent.parent.parent / 'data' / 'raw'
     base_dir.mkdir(parents=True, exist_ok=True)
 
-    # URLs oficiales del dataset FMA
-    URL_SMALL = "https://os.unil.cloud.switch.ch/fma/fma_small.zip"
+    # URLs oficiales del dataset FMA (cambiado a medium)
+    URL_MEDIUM = "https://os.unil.cloud.switch.ch/fma/fma_medium.zip"
     URL_META = "https://os.unil.cloud.switch.ch/fma/fma_metadata.zip"
 
-    # Paths de destino
-    PATH_SMALL = base_dir / "fma_small.zip"
+    # Paths de destino (cambiado a medium)
+    PATH_MEDIUM = base_dir / "fma_medium.zip"
     PATH_META = base_dir / "fma_metadata.zip"
-    EXTRACT_SMALL = base_dir / "fma_small"
+    EXTRACT_MEDIUM = base_dir / "fma_medium"
     EXTRACT_META = base_dir / "fma_metadata"
 
-    # Descargar fma_small
-    if not PATH_SMALL.exists():
-        download_file(URL_SMALL, str(PATH_SMALL))
+    # Descargar fma_medium
+    if not PATH_MEDIUM.exists():
+        download_file(URL_MEDIUM, str(PATH_MEDIUM))
     else:
-        print("fma_small.zip ya existe, no se descarga.")
+        print("fma_medium.zip ya existe, no se descarga.")
 
     # Descargar fma_metadata
     if not PATH_META.exists():
@@ -70,11 +70,11 @@ def download_fma_full():
     else:
         print("fma_metadata.zip ya existe, no se descarga.")
 
-    # Extraer fma_small
-    if not EXTRACT_SMALL.exists():
-        safe_extract(str(PATH_SMALL), str(base_dir))
+    # Extraer fma_medium
+    if not EXTRACT_MEDIUM.exists():
+        safe_extract(str(PATH_MEDIUM), str(base_dir))
     else:
-        print("fma_small ya extraído.")
+        print("fma_medium ya extraído.")
 
     # Extraer fma_metadata
     if not EXTRACT_META.exists():
@@ -82,11 +82,11 @@ def download_fma_full():
     else:
         print("fma_metadata ya extraído.")
 
-    print("\n FMA + Metadata listos para usar.")
+    print("\n FMA Medium + Metadata listos para usar.")
 
 
 if __name__ == "__main__":
-    download_fma_full()
+    download_fma_medium()
 
 
 
