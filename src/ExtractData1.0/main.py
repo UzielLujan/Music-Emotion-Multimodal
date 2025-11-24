@@ -2,7 +2,7 @@
 """
 Created on Sun Nov 16 16:04:48 2025
 
-@author: Brenda Tránsito
+@author: Brenda Tránsito and Uziel Luján
 """
 from scripts01_download_fma import download_fma_medium
 from scripts01_download_fma_medium import extract_fma_medium_and_metadata
@@ -22,24 +22,6 @@ import os
 import pandas as pd
 from pathlib import Path
 
-<<<<<<< HEAD
-# === RUTAS ===
-RAW = r"C:/Users/Brenda Tránsito/Documents/Maestría/Tercer Semestre/MIR/Proyecto/Proyecto_MIR/data/raw"
-LR=r"C:/Users/Brenda Tránsito/Documents/Maestría/Tercer Semestre/MIR/Proyecto/Proyecto_MIR/data/processed"
-META = os.path.join(RAW, "fma_metadata")
-AUDIO = os.path.join(RAW, "fma_medium")
-PROCESSED = r"C:/Users/Brenda Tránsito/Documents/Maestría/Tercer Semestre/MIR/Proyecto/Proyecto_MIR/data/processed"
-SPEC_DIR = os.path.join(LR, "spectrograms_medium")
-
-# Version con Rutas absolutas con Pathlib (opcional)
-from pathlib import Path
-BASE_PATH = Path(__file__).resolve().absolute().parent.parent
-
-META_PATH = BASE_PATH /"data" / "raw" /"fma_metadata"
-AUDIO_PATH = BASE_PATH / "data" / "raw" / "fma_medium"
-SPEC_DIR_PATH = BASE_PATH / "data" / "processed" / "spectrograms_medium"
-
-=======
 # Directorio base: carpeta donde está este script
 BASE_DIR = Path(__file__).resolve().parent  # src/ExtractData1.0/.. = src/
 BASE_OR_DIR = BASE_DIR.parent  # src/.. = Music-Emotion-Multimodal/
@@ -64,7 +46,6 @@ SPEC_DIR = str(SPEC_DIR)
 download_fma_medium()
 
 #extract_fma_medium_and_metadata()
->>>>>>> 726bcdfbcb927cbe732b393d9dc279eaf998fc9b
 
 # === 1. Filtrar inglés ===
 #english_ids = filter_english_tracks(META)
