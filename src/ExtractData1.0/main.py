@@ -1,10 +1,9 @@
-# -*- coding: utf-8 -*-
 """
-Created on Sun Nov 16 16:04:48 2025
-
 @author: Brenda Tránsito and Uziel Luján
 """
+
 from scripts01_download_fma import download_fma_medium
+'''
 from scripts01_download_fma_medium import extract_fma_medium_and_metadata
 from scripts02_filter_english import filter_english_tracks
 from scripts03_extract_audio_features import extract_audio_features
@@ -15,35 +14,59 @@ from scripts05_predict_emotions import add_emotion_labels
 from scripts06_lyrics import fetch_lyrics
 from scripts06_merge_lyrics import merge_lyrics
 from scripts07_merge_lyrics_kaggle import merge_kaggle_lyrics
-
+'''
 
 # Uso de rutas relativas y autodetección de carpetas
 import os
 import pandas as pd
 from pathlib import Path
+from dotenv import load_dotenv
+load_dotenv()
 
-# Directorio base: carpeta donde está este script
-BASE_DIR = Path(__file__).resolve().parent  # src/ExtractData1.0/.. = src/
-BASE_OR_DIR = BASE_DIR.parent  # src/.. = Music-Emotion-Multimodal/
-BASE_DATA_DIR = BASE_OR_DIR.parent
-DATA_DIR = BASE_DATA_DIR / 'data'
-RAW = DATA_DIR / 'raw'
-PROCESSED = DATA_DIR / 'processed'
-META = DATA_DIR / 'raw' /'fma_metadata'
-AUDIO = RAW / 'fma_medium'
-SPEC_DIR = DATA_DIR /'spectrograms_medium'
+# Detecta automáticamente la raíz del proyecto (buscando la carpeta 'data')
+def find_project_root(starting_point: Path = None) -> Path:
+    current = starting_point or Path(__file__).resolve()
+    while current != current.parent:
+        if (current / "data").exists():
+            return current
+        current = current.parent
+    raise FileNotFoundError("No se encontró carpeta 'data' en la jerarquía superior.")
+
+# === Definir rutas base ===
+PROJECT_ROOT = find_project_root()
+DATA_DIR = PROJECT_ROOT / "data"
+RAW = DATA_DIR / "raw"
+PROCESSED = DATA_DIR / "processed"
+META = RAW / "fma_metadata"
+AUDIO = RAW / "fma_medium"
+SPEC_DIR = DATA_DIR / "spectrograms_medium"
+FEATURES_DIR = DATA_DIR / "features"
+LYRICS_PATH = DATA_DIR / "processed" / "lyrics.csv"
+
+
+# Crear directorios si no existen
+for folder in [RAW, PROCESSED, META, AUDIO, SPEC_DIR, FEATURES_DIR]:
+    folder.mkdir(parents=True, exist_ok=True)
 
 # Si alguna carpeta no existe, mostrar advertencia
-for folder in [RAW, PROCESSED, META, AUDIO, SPEC_DIR]:
+for folder in [RAW, PROCESSED, META, AUDIO, SPEC_DIR, FEATURES_DIR]:
 	if not folder.exists():
 		print(f"[ADVERTENCIA] La carpeta no existe: {folder}")
 
-META = str(META)
-AUDIO = str(AUDIO)
-SPEC_DIR = str(SPEC_DIR)
+
+
+# Mostrar rutas para depuración
+print(f"[RUTA] ROOT:         {PROJECT_ROOT}")
+print(f"[RUTA] DATA:         {DATA_DIR}")
+print(f"[RUTA] AUDIO:        {AUDIO}")
+print(f"[RUTA] META:         {META}")
+print(f"[RUTA] SPECTROGRAMS: {SPEC_DIR}")
+print(f"[RUTA] FEATURES:     {FEATURES_DIR}")
+
+
 
 #=== PIPELINE COMPLETO CON FMA_MEDIUM ===#
-download_fma_medium()
+#download_fma_medium()
 
 #extract_fma_medium_and_metadata()
 
@@ -64,11 +87,11 @@ download_fma_medium()
 
 # === 6. PREDICT EMOTIONS ===
 
-#df_va = add_emotion_labels(df_merged)
+# df_va = add_emotion_labels(df_merged, FEATURES_DIR)
 
 # === 7. Descargar letras de Genius ===
 
-#fetch_lyrics(english_ids, META)
+# df_lyrics = fetch_lyrics(english_ids, META, LYRICS_PATH)
 
 # === 7. Unir letras ===
 #df_final = merge_lyrics(df_va, PROCESSED)

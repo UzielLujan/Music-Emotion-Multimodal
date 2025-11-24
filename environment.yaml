@@ -1,28 +1,24 @@
 name: mem-env
 channels:
-  - defaults
   - conda-forge
+  - defaults
+
 dependencies:
   - python=3.10
   - pip
+  - numpy
+  - pandas
   - librosa
-  - zipfile
-  - scikit-learn
+  - scipy
   - matplotlib
   - seaborn
+  - tqdm
+  - scikit-learn
+  - ffmpeg            # necesario para librosa y .mp3
   - jupyterlab
   - ipykernel
-  - pandas
-  - numpy
-  - pathlib
-  - lyricsgenius
-  - zipfile
-  - urllib.request
-  - shutil
-  - tqdm
-  - librosa.display
-  - matplotlib.pyplot
-  - scipy
-  - scikit-learn.metrics
+
   - pip:
+      - lyricsgenius == 
+      - python-dotenv
       - transformers

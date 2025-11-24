@@ -7,24 +7,20 @@ Created on Sun Nov 16 22:58:11 2025
 
 import os
 import pandas as pd
-import lyricsgenius
+import lyricsgenius # type: ignore 
 
-def fetch_lyrics(english_ids, metadata_dir):
-    # Cargar tracks.csv (MultiIndex)
-    tracks = pd.read_csv(os.path.join(metadata_dir, "tracks.csv"), index_col=0, header=[0,1])
-
-    # Inicializar Genius
-    genius_token = "buWOfxMjyhhJhURbGzwV9gwzfpANtP7oQw3g9rO3DTEV2U8jBOpri2XSfPcGuAC6"
-
-    # Crear carpeta de salida
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
-
+def fetch_lyrics(english_ids, metadata_dir, out_path):
     # Cargar tracks.csv con MultiIndex
     tracks = pd.read_csv(
         os.path.join(metadata_dir, "tracks.csv"),
         index_col=0,
         header=[0, 1]
     )
+
+    # Inicializar Genius
+    genius_token = os.getenv("GENIUS_API_KEY")
+    if genius_token is None:
+        raise ValueError("No se encontró la variable de entorno GENIUS_API_KEY")
 
     # Inicializar Genius API
     genius = lyricsgenius.Genius(
@@ -33,6 +29,9 @@ def fetch_lyrics(english_ids, metadata_dir):
         sleep_time=1,
         retries=3
     )
+    
+    # Crear carpeta de salida
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
 
     results = []
 

@@ -15,16 +15,15 @@ def map_emotions(valence, arousal):
     elif valence >= 0.5 and arousal < 0.5:
         return "relaxed"
 
-
-from pathlib import Path
-
-def add_emotion_labels(df):
+def add_emotion_labels(df, FEATURES_DIR):
     df["emotion"] = df.apply(
         lambda r: map_emotions(r["valence"], r["arousal"]), axis=1
     )
-    # Ruta absoluta a data/features basada en la ubicación de este script
-    base_dir = Path(__file__).resolve().parent.parent.parent / 'src' / 'data' / 'features'
-    base_dir.mkdir(parents=True, exist_ok=True)
-    output_path = base_dir / 'fma_labeled.csv'
+
+    output_path = FEATURES_DIR / 'fma_labeled.csv'
     df.to_csv(str(output_path), index=False)
+
+    print(f"[✔] fma_labeled.csv guardado en: {output_path}")
+
     return df
+
