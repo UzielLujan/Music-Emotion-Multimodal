@@ -23,7 +23,16 @@ LR=r"C:/Users/Brenda Tránsito/Documents/Maestría/Tercer Semestre/MIR/Proyecto/
 META = os.path.join(RAW, "fma_metadata")
 AUDIO = os.path.join(RAW, "fma_medium")
 PROCESSED = r"C:/Users/Brenda Tránsito/Documents/Maestría/Tercer Semestre/MIR/Proyecto/Proyecto_MIR/data/processed"
-SPEC_DIR = os.path.join(RAW, "spectrograms_medium")
+SPEC_DIR = os.path.join(LR, "spectrograms_medium")
+
+# Version con Rutas absolutas con Pathlib (opcional)
+from pathlib import Path
+BASE_PATH = Path(__file__).resolve().absolute().parent.parent
+
+META_PATH = BASE_PATH /"data" / "raw" /"fma_metadata"
+AUDIO_PATH = BASE_PATH / "data" / "raw" / "fma_medium"
+SPEC_DIR_PATH = BASE_PATH / "data" / "processed" / "spectrograms_medium"
+
 
 # === 1. Filtrar inglés ===
 english_ids = filter_english_tracks(META)
