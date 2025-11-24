@@ -1,2 +1,6 @@
 *.jpg
 *.png
+*.mp3
+*.wav
+*.zip"src/ExtractData1.0/__pycache__/" 
+"src/data/" 

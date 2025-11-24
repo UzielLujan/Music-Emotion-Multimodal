@@ -8,7 +8,7 @@ Created on Sun Nov 16 16:03:30 2025
 import os
 import pandas as pd
 
-def merge_valence_arousal(df_feats, metadata_dir="C:/Users/Brenda Tránsito/Documents/Maestría/Tercer Semestre/MIR/Proyecto/Proyecto_MIR/data/raw/fma_metadata/"):
+def merge_valence_arousal(df_feats, metadata_dir):
     echonest_path = os.path.join(metadata_dir, "echonest.csv")
 
     # Detectar MultiIndex de 3 niveles

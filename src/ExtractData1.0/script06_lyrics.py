@@ -9,7 +9,7 @@ import os
 import pandas as pd
 import lyricsgenius
 
-def fetch_lyrics(english_ids, metadata_dir="C:/Users/Brenda Tránsito/Documents/Maestría/Tercer Semestre/MIR/Proyecto/Proyecto_MIR/data/raw/fma_metadata", out_path="C:/Users/Brenda Tránsito/Documents/Maestría/Tercer Semestre/MIR/Proyecto/Proyecto_MIR/data/processed/lyrics.csv"):
+def fetch_lyrics(english_ids, metadata_dir):
     # Cargar tracks.csv (MultiIndex)
     tracks = pd.read_csv(os.path.join(metadata_dir, "tracks.csv"), index_col=0, header=[0,1])
 
