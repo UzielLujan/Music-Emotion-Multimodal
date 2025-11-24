@@ -12,7 +12,7 @@ from scripts04_generate_spectrograms import generate_spectrograms
 from scripts05_add_valence_arousal import add_valence_arousal
 from scripts05_merge_valence import merge_valence_arousal
 from scripts05_predict_emotions import add_emotion_labels
-from script06_lyrics import fetch_lyrics
+from scripts06_lyrics import fetch_lyrics
 from scripts06_merge_lyrics import merge_lyrics
 from scripts07_merge_lyrics_kaggle import merge_kaggle_lyrics
 
