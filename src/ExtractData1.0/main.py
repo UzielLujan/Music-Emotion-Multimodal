@@ -3,8 +3,9 @@
 """
 
 from scripts01_download_fma import download_fma_medium
+from scripts01_extract_fma import extract_fma_medium_and_metadata
+from explore_fma import explore_fma_metadata
 '''
-from scripts01_download_fma_medium import extract_fma_medium_and_metadata
 from scripts02_filter_english import filter_english_tracks
 from scripts03_extract_audio_features import extract_audio_features
 from scripts04_generate_spectrograms import generate_spectrograms
@@ -43,7 +44,7 @@ SPEC_DIR = DATA_DIR / "spectrograms_medium"
 FEATURES_DIR = DATA_DIR / "features"
 LYRICS_PATH = DATA_DIR / "processed" / "lyrics.csv"
 
-
+'''
 # Crear directorios si no existen
 for folder in [RAW, PROCESSED, META, AUDIO, SPEC_DIR, FEATURES_DIR]:
     folder.mkdir(parents=True, exist_ok=True)
@@ -52,9 +53,7 @@ for folder in [RAW, PROCESSED, META, AUDIO, SPEC_DIR, FEATURES_DIR]:
 for folder in [RAW, PROCESSED, META, AUDIO, SPEC_DIR, FEATURES_DIR]:
 	if not folder.exists():
 		print(f"[ADVERTENCIA] La carpeta no existe: {folder}")
-
-
-
+        
 # Mostrar rutas para depuración
 print(f"[RUTA] ROOT:         {PROJECT_ROOT}")
 print(f"[RUTA] DATA:         {DATA_DIR}")
@@ -62,13 +61,17 @@ print(f"[RUTA] AUDIO:        {AUDIO}")
 print(f"[RUTA] META:         {META}")
 print(f"[RUTA] SPECTROGRAMS: {SPEC_DIR}")
 print(f"[RUTA] FEATURES:     {FEATURES_DIR}")
-
+'''
 
 
 #=== PIPELINE COMPLETO CON FMA_MEDIUM ===#
-#download_fma_medium()
 
-#extract_fma_medium_and_metadata()
+# === 0. Descargar y extraer FMA Medium ===
+#download_fma_medium(RAW)
+
+#extract_fma_medium_and_metadata(RAW)
+
+explore_fma_metadata(META, AUDIO)
 
 # === 1. Filtrar inglés ===
 #english_ids = filter_english_tracks(META)

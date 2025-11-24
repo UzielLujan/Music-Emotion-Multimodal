@@ -1,7 +1,50 @@
+# --- Data ---
+data/raw/
+
+# --- Spectrogram images (heavy, regenerate) ---
+data/spectrograms_medium/
+
+# --- Images files ---
 *.jpg
 *.png
+
+# --- Compressed files ---
+*.zip
+*.tar.gz
+*.tar
+*.7z
+
+# --- Audio files ---
 *.mp3
 *.wav
-*.zip"src/ExtractData1.0/__pycache__/" 
-"src/data/" 
+*.flac
+*.ogg
+
+# --- Jupyter checkpoints ---
+.ipynb_checkpoints/
+
+# --- Virtual envs ---
+venv/
 .env
+.env.*
+
+# --- System files ---
+.DS_Store
+Thumbs.db
+
+# --- Python cache ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# --- Processed data we DO want to keep ---
+# Allow CSVs except those larger than 10 MB
+!data/processed/*.csv
+!data/features/*.csv
+
+# --- Ignore everything else in processed except CSVs ---
+data/processed/*
+data/features/*
+!data/processed/*.csv
+!data/features/*.csv

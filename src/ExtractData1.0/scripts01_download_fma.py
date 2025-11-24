@@ -43,50 +43,46 @@ def safe_extract(zip_path, extract_to):
 
 from pathlib import Path
 
-def download_fma_medium():
-    # Ruta absoluta a data/raw basada en la ubicación de este script
-    base_dir = Path(__file__).resolve().parent.parent.parent / 'data' / 'raw'
-    base_dir.mkdir(parents=True, exist_ok=True)
+def download_fma_medium(raw_dir):
+    """
+    Descarga fma_medium.zip y fma_metadata.zip en raw_dir,
+    y los extrae en ese mismo directorio.
+    """
+    raw_dir = Path(raw_dir)
+    raw_dir.mkdir(parents=True, exist_ok=True)
 
-    # URLs oficiales del dataset FMA (cambiado a medium)
     URL_MEDIUM = "https://os.unil.cloud.switch.ch/fma/fma_medium.zip"
     URL_META = "https://os.unil.cloud.switch.ch/fma/fma_metadata.zip"
 
-    # Paths de destino (cambiado a medium)
-    PATH_MEDIUM = base_dir / "fma_medium.zip"
-    PATH_META = base_dir / "fma_metadata.zip"
-    EXTRACT_MEDIUM = base_dir / "fma_medium"
-    EXTRACT_META = base_dir / "fma_metadata"
+    path_medium = raw_dir / "fma_medium.zip"
+    path_meta = raw_dir / "fma_metadata.zip"
+    extract_medium = raw_dir / "fma_medium"
+    extract_meta = raw_dir / "fma_metadata"
 
-    # Descargar fma_medium
-    if not PATH_MEDIUM.exists():
-        download_file(URL_MEDIUM, str(PATH_MEDIUM))
+    # Descargar
+    if not path_medium.exists():
+        download_file(URL_MEDIUM, str(path_medium))
     else:
-        print("fma_medium.zip ya existe, no se descarga.")
+        print("[INFO] fma_medium.zip ya existe.")
 
-    # Descargar fma_metadata
-    if not PATH_META.exists():
-        download_file(URL_META, str(PATH_META))
+    if not path_meta.exists():
+        download_file(URL_META, str(path_meta))
     else:
-        print("fma_metadata.zip ya existe, no se descarga.")
+        print("[INFO] fma_metadata.zip ya existe.")
 
-    # Extraer fma_medium
-    if not EXTRACT_MEDIUM.exists():
-        safe_extract(str(PATH_MEDIUM), str(base_dir))
+    # Extraer
+    if not extract_medium.exists():
+        safe_extract(str(path_medium), str(raw_dir))
     else:
-        print("fma_medium ya extraído.")
+        print("[INFO] Carpeta fma_medium ya existente.")
 
-    # Extraer fma_metadata
-    if not EXTRACT_META.exists():
-        safe_extract(str(PATH_META), str(base_dir))
+    if not extract_meta.exists():
+        safe_extract(str(path_meta), str(raw_dir))
     else:
-        print("fma_metadata ya extraído.")
+        print("[INFO] Carpeta fma_metadata ya existente.")
 
-    print("\n FMA Medium + Metadata listos para usar.")
+    print("[✔] FMA Medium + Metadata listos.")
 
-
-if __name__ == "__main__":
-    download_fma_medium()
 
 
 
