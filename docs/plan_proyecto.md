@@ -3,7 +3,7 @@
 ## 1. Introducción
 
 Este proyecto desarrolla un sistema de clasificación de emociones en música desde una perspectiva **multimodal**, integrando información **acústica** y **textual**.  
-La metodología se basa en arquitecturas neurales profundas **por modalidad** y en una **fusión final** mediante *stacking*, un enfoque que ha mostrado mejoras frente a fusiones tempranaso combinaciones simples.
+La metodología se basa en arquitecturas neuronales profundas **por modalidad** y en una **fusión final** mediante *stacking*, un enfoque que ha mostrado mejoras frente a fusiones tempranas o combinaciones simples.
 
 Este documento resume las decisiones de diseño acordadas y las ideas esenciales extraídas de los artículos base que guían el desarrollo del sistema.
 
