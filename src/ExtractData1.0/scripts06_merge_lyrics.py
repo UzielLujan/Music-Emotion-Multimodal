@@ -15,9 +15,9 @@ def merge_lyrics(df_va, processed_dir):
     guardadas en un archivo .csv.
     """
 
-    lyrics_path = os.path.join(processed_dir, "lyrics.csv")
+    lyrics_path = processed_dir / "lyrics.csv"
 
-    if not os.path.exists(lyrics_path):
+    if not lyrics_path.exists():
         raise FileNotFoundError(f"No se encontró {lyrics_path}")
 
     # Leer las letras

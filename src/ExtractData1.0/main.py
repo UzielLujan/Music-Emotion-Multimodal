@@ -1,11 +1,23 @@
 """
 @author: Brenda Tránsito and Uziel Luján
 """
+import sys
+import os
+import pandas as pd
+from pathlib import Path
+from dotenv import load_dotenv
+load_dotenv()
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from scripts01_download_fma import download_fma_medium
 from scripts01_extract_fma import extract_fma_medium_and_metadata
-from explore_fma import explore_fma_metadata
-'''
+
+from utils.explore_fma import explore_fma_metadata
+from utils.detect_mp3_tracks import detect_mp3_tracks
+from utils.detect_english_titles import detect_english_titles
+from utils.build_english_dataset import build_english_dataset, print_english_stats
+from utils.cross_valence_arousal import load_valence_arousal, cross_with_english_real
+
 from scripts02_filter_english import filter_english_tracks
 from scripts03_extract_audio_features import extract_audio_features
 from scripts04_generate_spectrograms import generate_spectrograms
@@ -13,16 +25,10 @@ from scripts05_add_valence_arousal import add_valence_arousal
 from scripts05_merge_valence import merge_valence_arousal
 from scripts05_predict_emotions import add_emotion_labels
 from scripts06_lyrics import fetch_lyrics
-from scripts06_merge_lyrics import merge_lyrics
-from scripts07_merge_lyrics_kaggle import merge_kaggle_lyrics
-'''
 
-# Uso de rutas relativas y autodetección de carpetas
-import os
-import pandas as pd
-from pathlib import Path
-from dotenv import load_dotenv
-load_dotenv()
+from scripts06_lyrics_v2 import fetch_lyrics_v2
+from scripts06_merge_lyrics import merge_lyrics
+#from scripts07_merge_lyrics_kaggle import merge_kaggle_lyrics
 
 # Detecta automáticamente la raíz del proyecto (buscando la carpeta 'data')
 def find_project_root(starting_point: Path = None) -> Path:
@@ -33,7 +39,7 @@ def find_project_root(starting_point: Path = None) -> Path:
         current = current.parent
     raise FileNotFoundError("No se encontró carpeta 'data' en la jerarquía superior.")
 
-# === Definir rutas base ===
+# === Definir rutas ===
 PROJECT_ROOT = find_project_root()
 DATA_DIR = PROJECT_ROOT / "data"
 RAW = DATA_DIR / "raw"
@@ -67,14 +73,48 @@ print(f"[RUTA] FEATURES:     {FEATURES_DIR}")
 #=== PIPELINE COMPLETO CON FMA_MEDIUM ===#
 
 # === 0. Descargar y extraer FMA Medium ===
-#download_fma_medium(RAW)
 
+#download_fma_medium(RAW)
 #extract_fma_medium_and_metadata(RAW)
+
+
+# ======================== Explorar metadata # ======================================
 
 explore_fma_metadata(META, AUDIO)
 
+mp3_ids = detect_mp3_tracks(META, AUDIO)
+
+# ===  Filtrar por idioma (tag oficial)
+english_ids = set(filter_english_tracks(META))
+
+print(f"Idioma oficial (en): {len(english_ids)}")
+
+# ===  Detectar títulos en inglés por heurística
+english_by_title = detect_english_titles(META, mp3_ids)
+print(f"Heurística por título: {len(english_by_title)}")
+
+stats = build_english_dataset(
+    mp3_ids=mp3_ids,
+    english_official_ids=english_ids,
+    english_heuristic_ids=english_by_title
+)
+
+print_english_stats(stats)
+
+english_real = stats["english_real"]
+
+df_va, va_ids = load_valence_arousal(META)
+
+english_va_ids = cross_with_english_real(english_real, va_ids)
+
+# ================================================================================
+# Aquí comienza el pipeline de procesamiento de datos
+
+
 # === 1. Filtrar inglés ===
 #english_ids = filter_english_tracks(META)
+
+#english_ids = english_real
 
 # === 2. Audio features ===
 #df_feats = extract_audio_features(english_ids, AUDIO)
@@ -90,11 +130,21 @@ explore_fma_metadata(META, AUDIO)
 
 # === 6. PREDICT EMOTIONS ===
 
-# df_va = add_emotion_labels(df_merged, FEATURES_DIR)
+#df_va = add_emotion_labels(df_merged, FEATURES_DIR)
 
 # === 7. Descargar letras de Genius ===
 
-# df_lyrics = fetch_lyrics(english_ids, META, LYRICS_PATH)
+#df_lyrics = fetch_lyrics(english_va_ids, META, LYRICS_PATH)
+#df_lyrics = fetch_lyrics_v2(track_ids=list(english_va_ids), metadata_dir=META, out_csv=LYRICS_PATH, cache_json="lyrics_cache.json", batch_size=20)
 
-# === 7. Unir letras ===
+# === 8. Unir letras ===
 #df_final = merge_lyrics(df_va, PROCESSED)
+
+# Verificamos el numero final de tracks
+#print(f"\n[✔] Número final de tracks en el dataset completo: {len(df_final)}")
+
+
+
+
+
+

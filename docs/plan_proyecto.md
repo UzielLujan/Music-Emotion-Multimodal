@@ -1,5 +1,7 @@
 # Plan del Proyecto — Sistema Multimodal para Clasificación de Emociones en Música
 
+**Título del proyecto: Análisis de emoción y sentimiento en música desde una perspectiva multimodal**
+
 ## 1. Introducción
 
 Este proyecto desarrolla un sistema de clasificación de emociones en música desde una perspectiva **multimodal**, integrando información **acústica** y **textual**.  
