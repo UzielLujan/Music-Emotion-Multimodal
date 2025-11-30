@@ -31,23 +31,26 @@ El diseño se basa en enfoques recientes de MIR que utilizan arquitecturas de re
 music-emotion-multimodal/
 │
 ├── data/ # Conjuntos de datos (crudos / procesados / intermedios)
-│ ├── raw/
+│ ├── raw/                # Conjunto de datos original (FMA small + metadatos)
+│ ├── rawv2/                 # Conjunto de datos versión 2 (YouTube + Spotify(Kaggle) + Genius)
 │ └── processed/
-│ └── intermediate/
+│ └── interim/
 │
 ├── src/ # Código fuente del modelo
 │ ├── audio/
 │ ├── text/
 │ ├── fusion/
+│ ├── ExtractDataV1/
+│ ├── ExtractDataV2/
 │ └── utils/
 │
 ├── notebooks/ # Experimentos exploratorios y prototipos
 │
 ├── results/ # Resultados, métricas, gráficas
 │
-├── reports/ # Reportes en LaTeX
+├── reports/ # Recursos para los reportes en LaTeX
 │
-├── docs/ # Documentación técnica y decisiones de diseño
+├── docs/ # Documentación técnica y decisiones de diseño (archivos tipo .md)
 │
 ├── requirements.txt
 ├── README.md
