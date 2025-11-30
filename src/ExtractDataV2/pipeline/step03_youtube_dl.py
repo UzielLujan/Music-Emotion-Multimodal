@@ -124,7 +124,7 @@ def download_audio_batch(input_csv, audio_output_dir):
         
         # --- PAUSA ---
         # Con cookies podemos ser un POCO más rápidos, pero mantengamos la calma
-        time.sleep(random.uniform(4.0, 10.0))
+        time.sleep(random.uniform(6.0, 15.0))
         
         base_path = target_file.parent / target_file.stem 
         result = download_one_track(artist, track_name, base_path)
