@@ -4,7 +4,7 @@ channels:
   - defaults
 
 dependencies:
-  - python=3.10
+  - python=3.11                 # ACTUALIZADO: Resuelve el error de 'Self' typing
   - pip
   - numpy
   - pandas
@@ -14,11 +14,14 @@ dependencies:
   - seaborn
   - tqdm
   - scikit-learn
-  - ffmpeg            # necesario para librosa y .mp3
+  - ffmpeg                      # Crucial para yt-dlp y librosa
   - jupyterlab
   - ipykernel
 
   - pip:
-      - lyricsgenius == 
       - python-dotenv
-      - transformers
+      - transformers            # Para cuando lleguemos al modelado de texto
+      - lyricsgenius            # Versión moderna compatible con Py3.11
+      - spotipy                 # Para ExtractDataV2 (Paso 1)
+      - langdetect              # Para ExtractDataV2 (Paso 2)
+      - yt-dlp                  # Para ExtractDataV2 (Paso 3)

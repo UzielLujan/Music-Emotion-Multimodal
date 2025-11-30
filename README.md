@@ -30,9 +30,10 @@ El diseño se basa en enfoques recientes de MIR que utilizan arquitecturas de re
 ```bash
 music-emotion-multimodal/
 │
-├── data/ # Conjuntos de datos (crudos / procesados)
+├── data/ # Conjuntos de datos (crudos / procesados / intermedios)
 │ ├── raw/
 │ └── processed/
+│ └── intermediate/
 │
 ├── src/ # Código fuente del modelo
 │ ├── audio/
