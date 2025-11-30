@@ -89,14 +89,52 @@ Mientras Uzi se encarga de procesar los audios (cuando finalmente se descarguen 
 
 1. `cleaning.py`:
 
-Función que reciba el string raw de Genius.
+- Función que reciba el string raw de Genius.
 
-Elimine etiquetas como [Chorus], [Verse 1].
+- Elimine etiquetas como [Chorus], [Verse 1].
 
-Elimine caracteres especiales y normalice (lowercase).
+- Elimine caracteres especiales y normalice (lowercase).
 
 2. `embeddings.py`:
 
-Esta es la pieza clave. Necesitamos una función que cargue un modelo Transformer (ej. DistilBERT) y convierta el texto limpio en un tensor/vector.
+- Esta es la pieza clave. Necesitamos una función que cargue un modelo Transformer (`BERT`) y convierta el texto limpio en un tensor/vector.
 
-Tip: Diseña la función para que reciba el texto y devuelva un numpy array.
+- Tip: Diseña la función para que reciba el texto y devuelva un `numpy array` (`.npy`).
+
+## 5. Filosofía de Código para la Fase 2 (Best Practices) 💡
+Dado que vamos a integrar tu código de texto con el pipeline de audio para correrlo masivamente en una GPU, necesitamos seguir ciertas pautas de ingeniería de software para que todo encaje como piezas de LEGO.
+
+1. **Adiós a los Notebooks (.ipynb) en Producción**
+
+- Los notebooks son geniales para explorar, pero para el pipeline final necesitamos archivos `.py` pues los archivos `.py` se pueden importar entre sí. Un notebook no.
+
+- **Flujo de trabajo**: Prototipa en Colab/Jupyter Notebooks si quieres, pero el código final debe estar limpio en `src/ProcessData/text/tus_scripts.py`.
+
+2. **Funciones Puras (Modularidad)**
+
+- Evita escribir código que se ejecute "suelto" al inicio del archivo. Todo debe estar dentro de funciones.
+- De esta forma, el pipeline puede llamar a tus funciones cuando lo necesite. Por ejemplo, Uzi puede importar `from text.cleaning import limpiar_texto` y aplicarlo a las 6,000 canciones automáticamente.
+
+3. **Rutas Relativas (Pathlib) y Configuración Centralizada**
+
+- Evita usar rutas absolutas como `C:/Users/Brenda/....` Eso romperá el código en la otra computadora.
+
+- Usa siempre `pathlib` basado en la raíz del proyecto (ya configurado en `main.py`).
+
+4. **Preparación para GPU (Código y Dependencias)**
+
+- Parametrización del Device: Cuando diseñes las funciones para BERT/Embeddings, evita "hardcodear" el uso de CPU. Estructura tu función para aceptar un parámetro device:
+
+```Python
+def get_embedding(text, model, device='cpu'):
+    # El orquestador le pasará 'cuda' cuando Uzi corra el script en la GPU
+    # Ejemplo interno: inputs = tokenizer(text, ...).to(device)
+    pass
+```
+- **Verificación de Dependencias (CUDA)**: El archivo `environment.yaml` actual instala transformers, lo cual usualmente instala torch (PyTorch) como dependencia. Sin embargo, a veces los gestores de paquetes descargan la versión **CPU-only** por defecto para ahorrar espacio.
+
+- **Tu Misión**: Investiga y verifica si necesitamos especificar una versión de PyTorch compatible con CUDA (ej. pytorch-cuda en Conda).
+
+- **Acción**: Si encuentras que se necesita una instalación específica para habilitar la GPU, por favor actualiza el `environment.yaml` o agrega una nota en el código, no solo con esa dependencia en especifico, sino con cualquier otra que sea necesaria. Esto es vital para que Uzi pueda correr el pipeline completo en GPU sin problemas con el entorno adecuado.
+
+## 6. Eso es todo por ahora!

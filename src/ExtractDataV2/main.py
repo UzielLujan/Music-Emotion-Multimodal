@@ -21,7 +21,9 @@ KAGGLE_DATASET = RAW_V2_DIR / "archive" / "dataset.csv"
 # OUTPUTS: Checkpoints
 CSV_STEP1 = RAW_V2_DIR / "metadata_step1_spotify.csv"
 #CSV_STEP2 = RAW_V2_DIR / "metadata_step2_lyrics.csv" # Archivo de Metadatos + letras originales
-CSV_STEP2 = RAW_V2_DIR / "metadata_step2_lyrics_clean.csv" # Archivo de Metadatos + letras limpio
+#CSV_STEP2 = RAW_V2_DIR / "metadata_step2_lyrics_clean.csv" # Archivo de Metadatos + letras limpio
+CSV_STEP2 = RAW_V2_DIR / "metadata_part_uzi.csv" # Archivo de Metadatos + letras limpio (Uzi only) cambia el nombre segun convenga
+
 
 load_dotenv(PROJECT_ROOT / ".env")
 
