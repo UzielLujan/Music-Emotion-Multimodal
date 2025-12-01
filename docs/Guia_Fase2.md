@@ -70,36 +70,166 @@ Uzi ejecutará el script de división que genera dos archivos en `data/raw_v2/`:
 
 **Nota**: Si YouTube te bloquea (Error "Sign in to confirm..."), detén el script, cambia tu IP (reinicia módem o usa datos) y vuelve a intentar. **El script es incremental, no perderás progreso**.
 
-## 4. Arquitectura de la Fase 2: Procesamiento (ProcessData)
+## 4. Arquitectura de la Fase 2: Procesamiento de los Datos Multimodales
 
-Una vez tengamos los audios, entraremos a la fase de **Ingeniería de Características**. Hemos diseñado una estructura modular para trabajar en paralelo sin conflictos.
+Una vez tengamos descargados todos los audios, entraremos a la fase de **Ingeniería de Características**. Hemos diseñado una estructura modular para trabajar en paralelo sin conflictos.
 
-**Estructura de Carpetas de ProcessData:**
+Para que el modelo multimodal funcione correctamente, necesitamos transformar los datos crudos (MP3 y Texto Raw) en **tensores** y **vectores** organizados. No crearemos un unico archivo gigante que contenga todo, sino una estructura modular de archivos todos vinculados por el `spotify_id`.
+
+
+El modelo consumirá 4 flujos de datos. Proponemos esta estructura de archivos finales en `data/processed/`:
+ 
+1. `master_dataset.csv`: El cerebro. Contiene `spotify_id`, etiquetas ($Y$: valence, arousal, quadrant), metadatos (artista, título) y rutas a los archivos pesados.
+2. `features_1d/` (Carpeta): Aquí vivirán los datos 1D ligeros en formato CSV.
+   - `features_audio_1d.csv`: Tabla con los HSFs (media, varianza de MFCCs, etc.) para cada ID.
+   - `features_text_1d.csv`: Tabla con vectores TF-IDF o estadísticos para cada ID.
+4. `features_2d/` (Carpeta): Aquí vivirán los datos 2D pesados en formato .npy (NumPy binario).
+   - `features_2d/spectrograms/{id}.npy`: Matriz del espectrograma (Audio 2D).
+   - `features_2d/embeddings/{id}.npy`: Matriz de embeddings BERT/Word2Vec (Texto 2D).
+
+### 4.1. El Roadmap Paso a Paso de la Fase de Procesamiento
+
+El proceso se divide en 3 etapas lógicas para llegar a esta arquitectura:
+
+---
+**Etapa 1: La Gran Alineación (The Great Alignment)**
+* **Script:** `src/ProcessData/utils/alignment.py` (Ya implementado).
+* **Acción:** Escanea la carpeta física `audio/` y la cruza con el CSV limpio de letras `metadata_step2_lyrics_clean.csv`. Es decir, valida cuáles letras de las 6,500 tienen audio descargado.
+* **Output Crítico:** `data/interim/aligned_metadata.csv`.
+
+    > - **NOTA PARA BRENDA:** Este archivo es tu **"Lista de Tareas"**. Tus scripts deben leer este CSV para saber qué canciones procesar. No uses los archivos de `raw_v2`.
+---
+**Etapa 2: Extracción de Características (Paralelo)**
+Aquí nos dividimos el trabajo. Ambos leemos la "Lista de Tareas" y generamos archivos en `data/processed/`.
+
+* **Rama Audio (Uzi):** Genera HSFs (**1D**) y Espectrogramas (**2D**).
+
+    > **Nota**: Uzi se acaba de dar cuenta que los HSFs son los que realmente importan para el modelo y no directamente los LLDs, por si acaso tambien compartias esa duda.
+* **Rama Texto (Brenda):** Genera TF-IDF/Chi2 (**1D**) y Embeddings BERT 
+(**2D**).
+
+    > **Nota**: Puedes evaluar si usar TF-IDF o Chi2 para la representación 1D o incluso una representación más reciente pero ligera. Lo importante es que las representaciones sean generadas en un formato adecuado.
+---
+**Etapa 3: El Archivo Maestro**
+
+Una vez que ambos hayamos generado nuestras características, se ejecutará un script final que cruce todos los outputs y genere el archivo maestro final. 
+Este script final hace Merge de `aligned_metadata.csv` con `features_1d` y `features_2d` usando `spotify_id`.
+* **Output:** El archivo generado estará ubicado en `data/processed/master_dataset.csv`.
+* **Función:** Es el índice final que validará que, para cada fila (`spotify_id`), existan tanto los archivos de audio como los de texto y tengan correctamente asignados los vectores correspondientes asi como las etiquetas emocionales. Por lo tanto, el modelo leerá este archivo para conectarse a los datos cuando entrene.
+
+### 4.2. Estructura de la fase 2
+
+Para la creacion de los modulos del procesamiento se diseñó la siguiente **Estructura de Carpetas en ProcessData:**
 
 ```bash
-src/ProcessData/
-├── audio/            # (Responsable: Uzi) - Recorte, Espectrogramas, HSFs
-├── text/             # (Responsable: Brenda) - Limpieza, TF-IDF, Embeddings
-└── utils/            # Funciones compartidas (Carga de archivos, Alineación)
+src/
+└── ProcessData/             <-- NUEVA CARPETA FASE 2
+    ├── main_processing.py   <-- Orquestador
+    │
+    ├── utils/   # Funciones compartidas (Carga de archivos, Alineación, etc.)
+    │   ├── alignment.py     <-- Paso 1 (Cruza CSV vs Carpeta Audio)
+    │   └── io_utils.py      <-- Funciones para guardar/cargar .npy
+    │
+    ├── audio/      # (Responsable: Uzi) - Recorte, Espectrogramas, HSFs
+    │   ├── trimming.py      <-- Lógica de corte (30s -> 15s por Energía)
+    │   ├── features_1d.py   <-- Librosa -> HSFs
+    │   └── spectrograms.py  <-- Librosa -> MelSpec -> .npy
+    │
+    └── text/  # (Responsable: Brenda) - Limpieza, TF-IDF, Embeddings
+        ├── cleaning.py      <-- Regex y NLTK/Spacy
+        ├── features_1d.py   <-- TF-IDF (Scikit-learn)
+        └── embeddings.py    <-- Transformers/Gensim -> .npy
 ```
 
-**Tu Misión de Desarrollo (Rama de Texto):**
+Una vez generados, los scripts deben depositar los resultados siguiendo esta estructura simétrica para que la integración sea automática y limpia:
 
-Mientras Uzi se encarga de procesar los audios (cuando finalmente se descarguen todos), tú estarás a cargo de la inteligencia del Texto. Necesitamos que desarrolles los siguientes módulos dentro de `src/ProcessData/text/`:
+```bash
+data/processed/
+│
+├── features_1d/              # Tablas numéricas (CSV)
+│   ├── features_audio_1d.csv    # (Uzi) Estadísticas de audio (HSFs)
+│   └── features_text_1d.csv   # (Brenda) Vectores TF-IDF/Chi2
+│
+├── features_2d/              # Tensores pesados (NumPy Binary)
+│   ├── spectrograms/         # (Uzi) Matrices .npy de Audio
+│   │   ├── 0AcJ0e....npy
+│   │   └── ...
+│   └── embeddings/           # (Brenda) Matrices .npy de Texto
+│       ├── 0AcJ0e....npy
+│       └── ...
+│
+└── master_dataset.csv        # (Final) Índice validado
+```
+### 4.3 Especificaciones para el desarrollo de la Rama de Audio
 
-1. `cleaning.py`:
+Este modulo se encargará de la señal acustica.
+
+#### A (Recorte Inteligente) `trimming.py`: 
+Cargar los 30s descargados. Calcular la energía RMS en ventanas deslizantes para encontrar los 15 segundos de mayor intensidad (probablemente el coro) y descartar el resto, de esta forma intentamos capturar la parte **emocionalmente más representativa** de la canción.
+
+#### B (Extracción 1D - HSFs) `features_1d.py`: 
+Calcular MFCCs, Chroma, ZCR y sacar sus estadísticas (media, std). Guardar en features_audio_1d.csv.
+
+#### C (Extracción 2D - Espectrogramas) `spectrograms.py`: 
+Generar el Mel-Spectrogram de los 15s recortados.
+
+>**Decisión Técnica**: No debemos guardar los espectrogramas como imágenes (.png), sino como matrices numéricas (.npy). Esto evita pérdidas de compresión y facilita la carga en PyTorch/TensorFlow.
+
+
+### 4.4. Especificaciones para el desarrollo de la Rama de Texto
+
+Mientras Uzi se encarga de procesar los audios (cuando finalmente se descarguen todos), Brenda estará a cargo de la inteligencia del Texto. Es necesario que se desarrollen los siguientes módulos dentro de `src/ProcessData/text/`, siguiendo las mejores prácticas descritas más adelante.
+
+#### A. Limpieza `cleaning.py`:
 
 - Función que reciba el string raw de Genius.
 
-- Elimine etiquetas como [Chorus], [Verse 1].
+- Elimine etiquetas como `[Chorus]`, `[Verse 1]` y arregle errores de codificación (muy importante).
 
-- Elimine caracteres especiales y normalice (lowercase).
+- Aplique preprocesamiento clásico: elimine caracteres especiales y normalice (lowercase), lemmatice si es necesario, remueva stopwords.
 
-2. `embeddings.py`:
+- Devuelva el texto limpio listo para vectorización. Considera formatos adecuados para esto como `json`. Considero que para capturar bien la estrcutrua de una letra, es mejor no eliminar los saltos de línea, sino todo lo contrario, preservarlos es importante para que el modelo entienda la estructura de la canción (verso, coro, puente, etc), estos saltos de linea pueden ser representados en el texto limpio como `\n` y almenos los embeddings generados por `BERT` entienden muy bien esta representación.
 
-- Esta es la pieza clave. Necesitamos una función que cargue un modelo Transformer (`BERT`) y convierta el texto limpio en un tensor/vector.
+> **Nota**: El preprocesamiento es importante en técnicas como *TF-IDF*, pero para `word embeddings` debe ser ligero para no perder contexto emocional y semántico. Considera que `BERT` ya maneja mucho de esto internamente por lo que para los `word embeddings` no es necesario un preprocesamiento agresivo, incluso puede ser contraproducente.
 
-- Tip: Diseña la función para que reciba el texto y devuelva un `numpy array` (`.npy`).
+#### B. Features 1D `features_1d.py`:
+
+- **Objetivo**: Generar representaciones estadísticas ligeras.
+
+- **Método**: *TF-IDF*, *Chi2* u otra técnica ligera para convertir el texto limpio en un vector numérico fijo por canción.
+
+- **Salida**: Un archivo `features_text_tfidf.csv` en la carpeta `features_1d`.
+
+    - *Ruta*: `data/processed/features_1d/features_text_tfidf.csv`.
+
+    - *Formato*: CSV o algun otro formato adecuado para este tipo de representaciones.
+
+    - *Columnas*: `spotify_id` (Obligatorio) + columnas del vector.
+
+> **Nota importante:**
+El formato CSV es ideal por compatibilidad, pero ineficiente para matrices gigantes.
+Como estamos considerando guardar estos vectores en CSV, **es vital limitar la dimensionalidad** para no generar archivos gigantes llenos de ceros (por su sparsity).
+>* Configura tu `TfidfVectorizer` con `max_features=1000` (o usa `SelectKBest` con Chi2 para seleccionar los top 1000).
+>* *Razón:* Un vector de 1,000 dimensiones generalmente es adecuado para mezclar con el audio. Un vector de 20,000 (vocabulario completo) sería inmanejable en formato CSV. Verifica el tamaño adecuado para que el archivo final no sea demasiado grande pero que aún capture suficiente información.
+
+
+#### C. Features 2D `embeddings.py`:
+
+Esta es la pieza clave. Necesitamos una función que cargue un modelo Transformer (`BERT`) y convierta el texto limpio en un tensor/vector. Tip: Diseña la función para que reciba el texto y devuelva un `numpy array` (`.npy`).
+
+- **Objetivo**: Generar representaciones semánticas profundas.
+
+- **Método**: Usar un modelo Transformer (ej. `DistilBERT` o `BERT`) para convertir el texto limpio en un tensor, es decir, una matriz de dimensiones (`tokens` x `embedding_size`), donde cada fila representa el embedding de un token y cada columna una dimensión del embedding.
+
+- **Salida**: Un archivo `.npy` individual por cada canción.
+
+    - *Ruta*: `data/processed/features_2d/embeddings/{spotify_id}.npy`.
+
+    - *Formato*: Array de NumPy.
+
+> **Nota Técnica**: Asegúrate de que tus scripts de extracción guarden el `spotify_id` para poder hacer el cruce al final.
+
+
 
 ## 5. Filosofía de Código para la Fase 2 (Best Practices) 💡
 Dado que vamos a integrar tu código de texto con el pipeline de audio para correrlo masivamente en una GPU, necesitamos seguir ciertas pautas de ingeniería de software para que todo encaje como piezas de LEGO.
