@@ -25,7 +25,7 @@ data/spectrograms_medium/
 
 # --- Virtual envs ---
 venv/
-#.env
+.env
 .env.*
 
 # --- System files ---

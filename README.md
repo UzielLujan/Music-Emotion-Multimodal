@@ -71,8 +71,8 @@ music-emotion-multimodal/
 
 ## Stack tecnológico propuesto
 
-- **Python 3.10+**
-- **PyTorch / TensorFlow** (por definir)
+- **Python 3.11+**
+- **PyTorch** – modelos de deep learning
 - **Librosa** – extracción de características acústicas  
 - **Transformers (Hugging Face)** – embeddings textuales  
 - **Scikit-learn** – modelos dde machine learning tradicionales y evaluación  
