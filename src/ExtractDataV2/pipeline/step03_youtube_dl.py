@@ -25,7 +25,7 @@ from pathlib import Path
 
 # === CONFIGURACIÓN ===
 # Cambia esto por tu navegador: 'chrome', 'firefox', 'edge', 'opera'
-BROWSER_FOR_COOKIES = 'chrome' 
+BROWSER_FOR_COOKIES = 'firefox' 
 USE_COOKIES = False  # Pon False si no quieres arriesgar una cuenta o si falla la extracción
 
 def get_random_query(artist, track_name):
@@ -139,6 +139,6 @@ def download_audio_batch(input_csv, audio_output_dir):
             print("❌")
 
     print("\n" + "="*50)
-    print(f"   ✅ Descargados sesión: {success_count}")
+    print(f"   ✅ Descargados en esta sesión: {success_count}")
     print(f"   ⏭️  Ya existían: {skipped_count}")
     print("="*50)

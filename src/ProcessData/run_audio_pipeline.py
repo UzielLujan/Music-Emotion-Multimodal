@@ -31,7 +31,7 @@ AUDIO_DIR = DATA_DIR / "raw_v2" / "audio"
 OUT_1D_DIR = DATA_DIR / "processed" / "features_1d"
 OUT_2D_DIR = DATA_DIR / "processed" / "features_2d" / "spectrograms"
 
-OUT_CSV_HSFS = OUT_1D_DIR / "features_audio_hsf.csv"
+OUT_CSV_HSFS = OUT_1D_DIR / "features_audio_1d.csv"
 
 def run_pipeline():
     print("🎛️  INICIANDO PIPELINE DE AUDIO...")
