@@ -34,7 +34,7 @@ OUT_2D_DIR = DATA_DIR / "processed" / "features_2d" / "spectrograms"
 OUT_CSV_HSFS = OUT_1D_DIR / "features_audio_1d.csv"
 
 def run_pipeline():
-    print("🎛️  INICIANDO PIPELINE DE AUDIO...")
+    print("  INICIANDO PIPELINE DE AUDIO...")
     
     # 1. Preparar Directorios
     OUT_1D_DIR.mkdir(parents=True, exist_ok=True)
@@ -47,7 +47,7 @@ def run_pipeline():
     
     df = pd.read_csv(INPUT_CSV)
     total = len(df)
-    print(f"   🎯 Objetivo: Procesar {total} canciones.")
+    print(f" Objetivo: Procesar {total} canciones.")
     
     # Lista para acumular los HSFs (filas del futuro CSV)
     hsf_data = []
@@ -86,7 +86,7 @@ def run_pipeline():
 
     # 4. Guardar CSV de Features 1D
     if hsf_data:
-        print(f"\n💾 Guardando tabla de HSFs...")
+        print(f"\n Guardando tabla de HSFs...")
         df_hsf = pd.DataFrame(hsf_data)
         
         # Reordenar: poner spotify_id primero
@@ -99,7 +99,7 @@ def run_pipeline():
         else:
              df_hsf.to_csv(OUT_CSV_HSFS, index=False)
              
-    print("\n✨ PIPELINE DE AUDIO FINALIZADO.")
+    print("\n PIPELINE DE AUDIO FINALIZADO.")
 
 if __name__ == "__main__":
     run_pipeline()

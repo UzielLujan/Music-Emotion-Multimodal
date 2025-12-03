@@ -26,7 +26,7 @@ from pathlib import Path
 # === CONFIGURACIÓN ===
 # Cambia esto por tu navegador: 'chrome', 'firefox', 'edge', 'opera'
 BROWSER_FOR_COOKIES = 'firefox' 
-USE_COOKIES = False  # Pon False si no quieres arriesgar una cuenta o si falla la extracción
+USE_COOKIES = True  # Pon False si no quieres arriesgar una cuenta o si falla la extracción
 
 def get_random_query(artist, track_name):
     """Genera una búsqueda diferente cada vez para despistar."""
