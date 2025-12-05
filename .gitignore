@@ -49,3 +49,6 @@ data/processed/*
 data/features/*
 !data/processed/*.csv
 !data/features/*.csv
+
+
+!data/processed/features_1d/*.csv
