@@ -19,6 +19,7 @@ data/spectrograms_medium/
 *.wav
 *.flac
 *.ogg
+*.webm
 
 # --- Jupyter checkpoints ---
 .ipynb_checkpoints/

@@ -17,6 +17,8 @@ dependencies:
   - ffmpeg                      # Crucial para yt-dlp y librosa
   - jupyterlab
   - ipykernel
+  - nltk
+  - sentencepiece
 
   - pip:
       - python-dotenv
