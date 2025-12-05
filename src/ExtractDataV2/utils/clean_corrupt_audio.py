@@ -9,7 +9,7 @@ BASE_DIR = Path(__file__).resolve().parents[3]
 AUDIO_DIR = BASE_DIR / "data" / "raw_v2" / "audio"
 
 def delete_bad_files():
-    print(f"🕵️‍♂️ Buscando archivos corruptos en: {AUDIO_DIR}")
+    print(f"Buscando archivos corruptos en: {AUDIO_DIR}")
     files = list(AUDIO_DIR.glob("*.mp3"))
     
     bad_files = 0
@@ -28,8 +28,8 @@ def delete_bad_files():
             os.remove(file_path)
             bad_files += 1
 
-    print(f"\n✨ Limpieza terminada. Se eliminaron {bad_files} archivos corruptos.")
-    print("👉 Ahora puedes volver a correr el scraper (ExtractDataV2/main.py) y descargará estos faltantes.")
+    print(f"\n Limpieza terminada. Se eliminaron {bad_files} archivos corruptos.")
+    print(" Ahora puedes volver a correr el scraper (ExtractDataV2/main.py) y descargará estos faltantes.")
 
 if __name__ == "__main__":
     delete_bad_files()

@@ -20,7 +20,10 @@ data/spectrograms_medium/
 *.flac
 *.ogg
 *.webm
+<<<<<<< HEAD
 
+=======
+>>>>>>> af94477dffbb83a7e3f8a7a027ad5b14ca5aeecf
 # --- Jupyter checkpoints ---
 .ipynb_checkpoints/
 
@@ -50,3 +53,6 @@ data/processed/*
 data/features/*
 !data/processed/*.csv
 !data/features/*.csv
+
+
+!data/processed/features_1d/*.csv

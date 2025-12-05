@@ -27,7 +27,7 @@ INTERIM_DIR = DATA_DIR / "interim"
 OUTPUT_CSV = INTERIM_DIR / "aligned_metadata.csv"
 
 def align_dataset():
-    print(f"🚀 Iniciando Alineación de Datos...")
+    print(f" Iniciando Alineación de Datos...")
     
     # 1. Verificar inputs
     if not INPUT_CSV.exists():
@@ -39,13 +39,13 @@ def align_dataset():
         return
 
     # 2. Cargar CSV
-    print(f"   📂 Cargando CSV de letras...")
+    print(f"    Cargando CSV de letras...")
     df = pd.read_csv(INPUT_CSV)
     total_csv = len(df)
     print(f"      -> {total_csv} registros en CSV.")
 
     # 3. Escanear Audios Reales
-    print(f"   📂 Escaneando archivos MP3 en disco...")
+    print(f"    Escaneando archivos MP3 en disco...")
     # Obtenemos todos los archivos .mp3 y quitamos la extensión para tener el ID puro
     # Usamos set() para búsqueda O(1) ultra rápida
     audio_files = {f.stem for f in RAW_AUDIO_DIR.glob("*.mp3") if f.stat().st_size > 0} 
@@ -55,7 +55,7 @@ def align_dataset():
     print(f"      -> {total_audio} archivos MP3 válidos encontrados.")
 
     # 4. CRUCE (Intersection)
-    print(f"   ⚔️  Realizando cruce (Match por spotify_id)...")
+    print(f"    Realizando cruce (Match por spotify_id)...")
     
     # Filtramos el DataFrame: mantenemos solo si el spotify_id está en el set de audios
     df_aligned = df[df['spotify_id'].isin(audio_files)].copy()
@@ -68,14 +68,14 @@ def align_dataset():
     df_aligned.to_csv(OUTPUT_CSV, index=False)
 
     print("\n" + "="*40)
-    print("✅ ALINEACIÓN COMPLETADA")
+    print(" ALINEACIÓN COMPLETADA")
     print("="*40)
     print(f"   Originales en CSV: {total_csv}")
     print(f"   Audios disponibles: {total_audio}")
     print(f"   --------------------------------")
-    print(f"   📉 Perdidos (Sin audio): {lost}")
-    print(f"   🎯 DATASET FINAL ALINEADO: {len(df_aligned)}")
-    print(f"   💾 Guardado en: {OUTPUT_CSV}")
+    print(f"    Perdidos (Sin audio): {lost}")
+    print(f"    DATASET FINAL ALINEADO: {len(df_aligned)}")
+    print(f"    Guardado en: {OUTPUT_CSV}")
     print("="*40)
     print("   Este archivo 'aligned_metadata.csv' es la LISTA DE TAREAS para la Fase 2.")
 
