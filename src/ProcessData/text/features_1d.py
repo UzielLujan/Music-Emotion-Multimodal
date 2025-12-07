@@ -3,74 +3,80 @@
 import pandas as pd
 from pathlib import Path
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.feature_selection import SelectKBest, chi2
-from sklearn.decomposition import TruncatedSVD
-
+import numpy as np
 
 def generate_text_1d_features(
-        clean_tfidf_csv_path: Path,
-        output_csv_path: Path,
-        tfidf_max_features=5000,
-        chi2_dims=500,
-        lsa_dims=100):
+        clean_file_path: Path,     # <--- CAMBIO AQUÍ: Antes se llamaba 'clean_tfidf_csv_path'
+        output_path: Path,         # <--- CAMBIO AQUÍ: Antes se llamaba 'output_csv_path'
+        max_vocab_size=3000,       # <--- CAMBIO AQUÍ: Nuevo argumento para cumplir con el Paper
+        format='parquet'):
     """
-    Genera la representación 1D del texto con los pasos:
-    1. TF-IDF (hasta tfidf_max_features)
-    2. Chi² supervisado → chi2_dims
-    3. LSA (TruncatedSVD) → lsa_dims
+    Genera la representación vectorial base (TF-IDF) preparando el terreno
+    para la selección Chi2 que se hará en el entrenamiento.
     """
 
-    # ------------------------
-    # 1. Cargar CSV limpio
-    # ------------------------
-    df = pd.read_csv(clean_tfidf_csv_path)
-
-    if "clean_lyrics_tfidf" not in df.columns:
-        raise ValueError("Se esperaba la columna 'clean_lyrics_tfidf'.")
-
-    corpus = df["clean_lyrics_tfidf"].astype(str)
-
-    # ------------------------
-    # 2. TF-IDF base
-    # ------------------------
-    tfidf = TfidfVectorizer(max_features=tfidf_max_features)
-    X_tfidf = tfidf.fit_transform(corpus)
-
-    # ------------------------
-    # 3. Selección Chi²
-    # ------------------------
-    if "label_quadrant" in df.columns:
-        target_col = "label_quadrant"
-    elif "quadrant" in df.columns:
-        target_col = "quadrant"
+    print(f"📚 Cargando texto limpio desde: {clean_file_path}")
+    
+    # Soporte para Parquet (Fase 2)
+    if clean_file_path.suffix == '.parquet':
+        df = pd.read_parquet(clean_file_path)
+    elif clean_file_path.suffix == '.json':
+        df = pd.read_json(clean_file_path, lines=True)
     else:
-        raise ValueError("No existe columna de etiqueta ('label_quadrant' o 'quadrant').")
+        df = pd.read_csv(clean_file_path)
 
-    selector = SelectKBest(chi2, k=chi2_dims)
-    X_chi2 = selector.fit_transform(X_tfidf, df[target_col])
+    # Validar nombre de columna de texto
+    col_text = "clean_lyrics_tfidf"
+    if col_text not in df.columns:
+        raise ValueError(f"Falta la columna '{col_text}' en el archivo de entrada.")
+
+    # Asegurar que sean strings y llenar nulos
+    corpus = df[col_text].fillna("").astype(str)
+
+    # ---------------------------------------------------------
+    # 1. Vectorización TF-IDF (Pre-requisito para Chi2)
+    # ---------------------------------------------------------
+    print(f"🧮 Generando Vectores TF-IDF (Vocabulario base: {max_vocab_size})...")
+    
+    vectorizer = TfidfVectorizer(
+        max_features=max_vocab_size,
+        min_df=5,
+        max_df=0.95
+    )
+    
+    X_vec = vectorizer.fit_transform(corpus)
+    
+    print(f"   ℹ️ Vocabulario generado: {len(vectorizer.get_feature_names_out())} palabras")
 
     # ------------------------
-    # 4. LSA / TruncatedSVD a lsa_dims
+    # 2. Construcción del DataFrame
     # ------------------------
-    lsa = TruncatedSVD(n_components=lsa_dims, random_state=42)
-    X_lsa = lsa.fit_transform(X_chi2)
+    feature_names = vectorizer.get_feature_names_out()
+    
+    # Usamos float32 para ahorrar memoria
+    df_out = pd.DataFrame(X_vec.toarray().astype(np.float32), 
+                          columns=[f"tfidf_{name}" for name in feature_names])
 
-    var_total = lsa.explained_variance_ratio_.sum()
-    print(f"Varianza explicada por {lsa_dims} componentes LSA: {var_total:.4f}")
-
-    # ------------------------
-    # 5. Construcción del DataFrame final
-    # ------------------------
-    feature_cols = [f"f_{i}" for i in range(lsa_dims)]
-    df_out = pd.DataFrame(X_lsa, columns=feature_cols)
-
-    df_out.insert(0, "spotify_id", df["spotify_id"])
+    # Insertar ID para cruces futuros
+    if 'spotify_id' in df.columns:
+        df_out.insert(0, "spotify_id", df["spotify_id"])
+    elif 'musicId' in df.columns:
+        df_out.insert(0, "musicId", df["musicId"])
 
     # ------------------------
-    # 6. Guardar archivo
+    # 3. Guardar
     # ------------------------
-    output_csv_path.parent.mkdir(parents=True, exist_ok=True)
-    df_out.to_csv(output_csv_path, index=False)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    if format == 'parquet':
+        df_out.to_parquet(output_path, index=False)
+    else:
+        df_out.to_csv(output_path, index=False)
 
-    print(f"Archivo 1D generado en: {output_csv_path}")
-    print(f"Dimensiones finales: {df_out.shape}")
+    print(f"✅ Features base generadas ({format}): {output_path}")
+    print(f"   Shape: {df_out.shape}")
+    print("   ⚠️ RECUERDA: El filtro Chi-cuadrado se aplicará en el entrenamiento.")
+
+# Bloque de prueba (solo si ejecutas este script directo)
+if __name__ == "__main__":
+    pass

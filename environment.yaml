@@ -19,6 +19,8 @@ dependencies:
   - ipykernel
   - nltk
   - sentencepiece
+  - ftfy
+  - pyarrow
 
   - pip:
       - python-dotenv
