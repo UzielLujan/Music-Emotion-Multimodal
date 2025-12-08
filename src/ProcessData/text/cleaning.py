@@ -5,11 +5,22 @@ from pathlib import Path
 import pandas as pd
 import nltk
 from nltk.corpus import stopwords
-import ftfy  # pip install ftfy (Recomendado para arreglar codificación real)
+import ftfy  # pip install ftfy
 
 # Descargar stopwords una sola vez
 nltk.download("stopwords", quiet=True)
-STOPWORDS = set(stopwords.words("english"))
+
+# 1. Definir la lista personalizada de ruido musical (Interjecciones / Coros)
+MUSIC_NOISE = {
+    'la', 'ooh', 'ah', 'doo', 'hey', 'eh', 'woah', 'whoa', 'ha', 'mmm',
+    'dum', 'pam', 'da', 'uh', 'ba', 'ya', 'pa', 'yo', 'bam', 'boom', 'um', 
+    'tit', 'sir', 'shake', 'bum', 'hmm', 'huh', 'cha', 'lala', 'mm', 'nah', 'wow',
+    # Agregamos variantes comunes por si acaso
+    'oh', 'yeah', 'na', 'baby', 'oops','que', 'tu', 'lo','mi'
+}
+
+# 2. Crear el set maestro de Stopwords (Inglés estándar + Ruido Musical)
+STOPWORDS = set(stopwords.words("english")).union(MUSIC_NOISE)
 
 
 # ----------------------------------------------------
@@ -18,7 +29,6 @@ STOPWORDS = set(stopwords.words("english"))
 
 def fix_encoding(text: str) -> str:
     """Arregla errores comunes de codificación (mojibake)."""
-    # ftfy es más inteligente que encode/decode ignore
     return ftfy.fix_text(text)
 
 def remove_section_tags(text: str) -> str:
@@ -28,21 +38,20 @@ def remove_section_tags(text: str) -> str:
 def clean_text_bert(text: str) -> str:
     """
     Limpieza para BERT:
-    - Mantiene mayúsculas (importante para nombres propios/énfasis).
+    - Mantiene mayúsculas.
     - Mantiene puntuación básica.
     - Mantiene saltos de línea (\n).
+    - NO elimina stopwords (BERT necesita contexto).
     """
     if not isinstance(text, str): return ""
     
     text = fix_encoding(text)
     text = remove_section_tags(text)
     
-    # 1. Normalizar espacios horizontales (tabs, espacios dobles) a uno solo, 
-    #    PERO protegiendo los saltos de línea.
-    #    [ \t]+ busca espacios o tabs repetidos.
+    # 1. Normalizar espacios horizontales pero protegiendo los \n
     text = re.sub(r'[ \t]+', ' ', text)
     
-    # 2. Reducir saltos de línea múltiples a máximo 2 (para separar párrafos)
+    # 2. Reducir saltos de línea múltiples a máximo 2
     text = re.sub(r'\n{3,}', '\n\n', text)
     
     return text.strip()
@@ -53,7 +62,7 @@ def clean_text_tfidf(text: str) -> str:
     - Minúsculas.
     - Sin puntuación.
     - Sin saltos de línea (texto plano).
-    - Sin stopwords.
+    - SIN stopwords (incluyendo ruido musical).
     """
     if not isinstance(text, str): return ""
 
@@ -69,11 +78,12 @@ def clean_text_tfidf(text: str) -> str:
     # 3. Eliminar todo lo que no sea letra o número
     text = re.sub(r"[^a-z0-9\s]", "", text)
     
-    # 4. Eliminar espacios extra
+    # 4. Eliminar espacios extra resultantes
     text = re.sub(r"\s+", " ", text).strip()
 
-    # 5. Stopwords
+    # 5. Filtrar Stopwords (Aquí se van 'the', 'is' y también 'ooh', 'yeah', 'la')
     tokens = [t for t in text.split() if t not in STOPWORDS]
+    
     return " ".join(tokens)
 
 
@@ -101,15 +111,14 @@ def save_clean_lyrics(aligned_csv_path: Path, output_path: Path, format='parquet
 
     # Validar que exista el ID
     if 'spotify_id' not in df.columns:
-        # Si tu CSV usa 'musicId' u otro, ajústalo aquí
         id_col = 'musicId' if 'musicId' in df.columns else df.columns[0]
     else:
         id_col = 'spotify_id'
 
-    print("Procesando limpieza TF-IDF...")
+    print("Procesando limpieza TF-IDF (Quitando ruido musical)...")
     df["clean_lyrics_tfidf"] = df["lyrics"].apply(lambda x: process_lyrics(x, "tfidf"))
 
-    print("Procesando limpieza BERT...")
+    print("Procesando limpieza BERT (Preservando estructura)...")
     df["clean_lyrics_bert"] = df["lyrics"].apply(lambda x: process_lyrics(x, "bert"))
 
     # Seleccionar SOLO columnas necesarias
@@ -120,16 +129,13 @@ def save_clean_lyrics(aligned_csv_path: Path, output_path: Path, format='parquet
     output_path.parent.mkdir(parents=True, exist_ok=True)
     
     if format == 'parquet':
-        # Requiere pip install pyarrow o fastparquet
         df_clean.to_parquet(output_path, index=False)
     elif format == 'json':
-        # orient='records' crea una lista de objetos [{"id":.., "lyrics":..}, ..]
-        # lines=True crea un objeto por línea (mejor para archivos grandes)
         df_clean.to_json(output_path, orient='records', lines=True)
     else:
         df_clean.to_csv(output_path, index=False)
 
-    print(f"✅ Archivo limpio generado ({format}):\n{output_path}")
+    print(f"Archivo limpio generado ({format}):\n{output_path}")
 
 
 # ----------------------------------------------------
@@ -141,7 +147,7 @@ if __name__ == "__main__":
     ROOT = Path(__file__).resolve().parents[3]
     ALIGNED = ROOT / "data" / "interim" / "aligned_metadata.csv"
     
-    # Cambiamos extensión a .parquet (o .json)
+    # Cambiamos extensión a .parquet
     OUT_FILE = ROOT / "data" / "interim" / "lyrics_cleaned.parquet"
 
     print("Iniciando limpieza de texto...")
