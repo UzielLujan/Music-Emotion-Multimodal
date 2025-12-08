@@ -18,10 +18,11 @@ Etapa de Fusión (Nivel 1): Usamos los 4 modelos congelados para generar predicc
 ## 2. Objetivo General
 Entrenar una arquitectura de Stacking Ensemble compuesta por 4 modelos base (Expertos) y 1 meta-modelo (Juez), logrando superar el baseline aleatorio (25% accuracy) y el baseline unimodal.
 La Arquitectura "4 Expertos + 1 Juez"
-1. Experto Texto 2D (Tú): BERT Embeddings $\rightarrow$ CNN-LSTM.Experto Texto 1D (Tú): TF-IDF $\rightarrow$ 
-2. Selección Chi² $\rightarrow$ DNN.Experto Audio 2D (Uziel): Espectrogramas Mel $\rightarrow$ CNN (VGG-ish).
-3. Experto Audio 1D (Uziel): Features Estadísticos (OpenSMILE/Librosa) $\rightarrow$ DNN.
-4. Meta-Learner (Fusión): Predicciones de los 4 expertos $\rightarrow$ Regresión Logística / MLP.
+1. Experto Texto 2D (Tú): BERT Embeddings $\rightarrow$ CNN-LSTM.
+2. Experto Texto 1D (Tú): TF-IDF $\rightarrow$  Selección Chi² $\rightarrow$ DNN.
+3. Experto Audio 2D (Uziel): Espectrogramas Mel $\rightarrow$ CNN (VGG-ish).
+4. Experto Audio 1D (Uziel): Features Estadísticos (OpenSMILE/Librosa) $\rightarrow$ DNN.
+5. Meta-Learner (Fusión): Predicciones de los 4 expertos $\rightarrow$ Regresión Logística / MLP.
 ---
 
 ## 3. Estructura de Trabajo (src/Models)

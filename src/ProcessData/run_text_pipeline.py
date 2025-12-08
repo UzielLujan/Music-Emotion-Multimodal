@@ -77,7 +77,7 @@ def run_pipeline():
     generate_text_1d_features(
         clean_file_path=OUT_CLEAN,
         output_path=OUT_FEATURES_1D,
-        max_vocab_size=3000, # Basado en análisis de cobertura (Zipf Law)
+        max_vocab_size=2000, # Basado en análisis de cobertura (Zipf Law)
         format='parquet'
     )
 
