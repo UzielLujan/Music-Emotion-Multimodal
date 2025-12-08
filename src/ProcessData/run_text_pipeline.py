@@ -96,7 +96,7 @@ def run_pipeline():
         model_name="distilbert-base-uncased",
         max_length=MAX_LEN,
         batch_size=BATCH_SIZE,
-        device_str=None # Dejamos que el script detecte auto (o pon 'cuda')
+        device_str='cuda' # Dejamos que el script detecte auto (o pon 'cuda')
     )
 
     # Reporte final

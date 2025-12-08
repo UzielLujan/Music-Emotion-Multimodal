@@ -6,7 +6,16 @@
 
 ---
 
-## 1. Objetivo General
+## 1. Arquitectura y Filosofía de Trabajo
+No entrenaremos una red gigante "End-to-End". Usaremos la estrategia de Stacking Ensemble.
+
+El Flujo de Trabajo en 2 Etapas:
+
+Etapa de Expertos (Nivel 0): Entrenamos 4 modelos independientemente. Cada uno se vuelve especialista en su dominio. Al terminar, guardamos sus "cerebros" (pesos .pth) y los congelamos.
+
+Etapa de Fusión (Nivel 1): Usamos los 4 modelos congelados para generar predicciones sobre el set de validación. Entrenamos un "Juez" (Meta-Learner) que aprende a ponderar esas predicciones para dar el veredicto final.
+
+## 2. Objetivo General
 Entrenar una arquitectura de Stacking Ensemble compuesta por 4 modelos base (Expertos) y 1 meta-modelo (Juez), logrando superar el baseline aleatorio (25% accuracy) y el baseline unimodal.
 La Arquitectura "4 Expertos + 1 Juez"
 1. Experto Texto 2D (Tú): BERT Embeddings $\rightarrow$ CNN-LSTM.Experto Texto 1D (Tú): TF-IDF $\rightarrow$ 
@@ -15,82 +24,144 @@ La Arquitectura "4 Expertos + 1 Juez"
 4. Meta-Learner (Fusión): Predicciones de los 4 expertos $\rightarrow$ Regresión Logística / MLP.
 ---
 
-## 2. Estructura de Trabajo (src/Models)
+## 3. Estructura de Trabajo (src/Models)
 Para mantener el orden, crearemos scripts de entrenamiento dedicados. No haremos un solo script gigante.
 
 ```bash
 src/
 ├── Models/
 │   ├── __init__.py
-│   ├── utils.py               <-- Funciones compartidas (Carga de datos, Splitter)
-│   ├── train_text_2d.py       <-- Script Principal Brenda (Deep Learning)
-│   ├── train_text_1d.py       <-- Script Secundario Brenda (Machine Learning + DNN)
-│   ├── train_audio_2d.py      <-- Script Uziel
-│   ├── train_audio_1d.py      <-- Script Uziel
-│   └── train_fusion.py        <-- Script Final (Stacking)
-└── ...
+│   ├── utils.py               # <--- Carga de datos y Splitter (CRÍTICO)
+│   ├── definitions.py         # <--- Clases de las Redes (TextCNN, AudioCNN, etc.)
+│   ├── train_text_2d.py       # Script Brenda
+│   ├── train_text_1d.py       # Script Brenda
+│   ├── train_audio_2d.py      # Script Uziel
+│   ├── train_audio_1d.py      # Script Uziel
+│   ├── generate_meta_features.py # <--- Script intermedio (Inferencia de expertos)
+│   └── train_fusion.py        # Script Final (El Juez)
+└── saved_models/              # <--- AQUÍ SE GUARDAN LOS .PTH
+    ├── text_2d_best.pth
+    ├── text_1d_best.pth
+    ├── audio_2d_best.pth
+    └── audio_1d_best.pth
 ```
 ---
 
-## 3. Plan Detallado por Módulos
-**Paso 0: Preparación del Terreno (utils.py)**
+## 📂 Rutas de Datos (Entradas y Salidas)
 
-Antes de entrenar, necesitamos una forma estándar de cargar los datos que alinee los IDs.
-
-- [ ] Dataset Loader: Crear una clase que cargue el aligned_metadata.csv y busque los archivos .npy o .parquet correspondientes usando el spotify_id.
-
-- [ ] Stratified Split: Implementar una función que divida en Train/Validation/Test (ej. 70/15/15) asegurando que los 4 cuadrantes estén balanceados en todos los sets.
+| Tipo de Dato | Ruta de Archivo | Descripción |
+|--------------|------------------|-------------|
+| Master Split | `data/processed/splits/master_split.csv` | La Biblia. Dice qué ID es Train, Val o Test. |
+| Texto 2D | `data/processed/features_2d/embeddings/embeddings_2d.npy` | Tensores BERT (Input Texto Profundo) |
+| Texto 1D | `data/processed/features_1d/features_text_1d.parquet` | TF-IDF (Input Texto Estadístico) |
+| Audio 2D | `data/processed/features_2d/spectrograms/specs.npy` | Espectrogramas (Input Audio Profundo) |
+| Audio 1D | `data/processed/features_1d/features_audio.csv` | OpenSMILE (Input Audio Estadístico) |
 ---
-### Paso 1: Rama de Texto (Responsable: Brenda)
-- A. Modelo 2D: Semántica Profunda (train_text_2d.py)
-    - Input: embeddings_2d.npy (Tensor: $N \times 512 \times 768$).
-    - Arquitectura:Entrada (Input Layer).
-        - Capa Convolucional (Conv1D): Para detectar n-gramas locales (frases clave).
-        - Max Pooling: Para reducir dimensión.
-        - LSTM (Opcional/Paper): Para capturar dependencias a largo plazo en la narrativa.
-        - Dense Layer + Dropout: Clasificación.
-    * Reto Técnico: Manejar la memoria de la GPU con tensores grandes. Usar DataLoaders de PyTorch.
 
-- B. Modelo 1D: Palabras Clave (train_text_1d.py)
-    - Input: features_text_1d.parquet (TF-IDF amplio, ~3000 dims).
-    - Pre-procesamiento (IN-LOOP):
-        - Aquí entra el Chi-Cuadrado ($\chi^2$): Dentro del script, aplicar SelectKBest(chi2, k=500) usando solo el set de entrenamiento
-    - Arquitectura: DNN (Red Densa Simple).
-        - Capas: Input(500) $\rightarrow$ Dense(256) $\rightarrow$ ReLU $\rightarrow$ Dropout $\rightarrow$ Dense(4).
-    - Objetivo: Capturar palabras específicas ("party", "pain") que discriminan fuertemente.
+## 4. El "Master Split" (Paso 0 - Obligatorio)
+Antes de entrenar nada, debemos garantizar que todos los modelos vean las mismas canciones en los mismos grupos.
 
-### Paso 2: Rama de Audio (Responsable: Uziel)
+Crearemos un script src/ProcessData/make_splits.py que genere el archivo master_split.csv.
 
-Debe seguir la misma lógica que texto.
+- Train (70%): Usado para entrenar los 4 expertos.
 
-- Modelo 2D (Espectrogramas): Usar una CNN 2D estándar (como una ResNet18 simplificada o una VGG-16 pequeña) para analizar la imagen del sonido.
+- Validation (15%): Usado para entrenar al Meta-Learner (Fusion).
 
-- Modelo 1D (Features): Una DNN simple para procesar vectores numéricos de timbre y ritmo.
+- Test (15%): Usado SOLO para la evaluación final y reporte de tesis.
 
-### Paso 3: Fusión y Stacking (train_fusion.py)
-Una vez que los 4 modelos anteriores estén entrenados y guardados (.pth o .h5):
-1. Congelar: Poner los 4 modelos en modo eval().
-2. Extracción de Probabilidades: Pasar todo el dataset por los modelos.
-    - Output: Un vector de 16 dimensiones por canción (4 emociones $\times$ 4 modelos).
+Regla de Oro: Ningún script de entrenamiento hace train_test_split aleatorio. Todos leen el master_split.csv y filtran por ID.
 
-3. Entrenamiento del Meta-Model:
-    - Usar esas 16 dimensiones como entrada (X_meta).
-    - Etiquetas reales como objetivo (y_true).
-    - Entrenar una Regresión Logística o una red muy pequeña para encontrar el peso ideal de cada experto.
---- 
+---
 
-### 4. Estándares Técnicos y Métricas
-Hiperparámetros Sugeridos
-- Optimizador: AdamW (suele funcionar mejor que Adam estándar).
-- Learning Rate:
+## 5. Detalle de los Expertos (Fase 3-A)
+En esta fase, los modelos NO se conocen entre sí. Se entrenan y guardan por separado.
 
-    - BERT/CNN: Bajo (ej. 1e-4 o 5e-5).
+**🧠 Rama de Texto (Responsable: Brenda)**
+- A. Experto Texto 2D (Deep Learning)
+    - Script: train_text_2d.py
 
-    - DNN: Estándar (ej. 1e-3).
+    - Entrada: Tensor (Batch, 256, 768) (donde 256 es tiempo, 768 features).
 
-- Batch Size: 16 o 32 (dependiendo de la VRAM).
+    - Arquitectura (CNN-LSTM):
 
-- Early Stopping: Obligatorio. Si la val_loss no mejora en 5 épocas, detener entrenamiento y guardar el mejor modelo.
+    - Transposición: Cambiar a (Batch, 768, 256) para que la conv. sea temporal.
+
+    - Conv1D Block: Filtros de tamaño 3, 4 y 5 (detectan n-gramas) + ReLU + MaxPool.
+
+    - LSTM: Procesa la secuencia de características extraídas por la CNN.
+
+    - Clasificador: Dense -> Softmax (4 emociones).
+
+    - Guardado: Al tener la mejor Validation Accuracy, guardar en src/saved_models/text_2d_best.pth.
+
+- B. Experto Texto 1D (Machine Learning)
+Script: train_text_1d.py
+
+    - Entrada: Vector TF-IDF (3000 dimensiones).
+
+    - Lógica Interna:
+
+        - Leer master_split.csv.
+
+        - Separar X_train y X_val.
+
+        - Fit Chi²: Aprender las 500 mejores palabras usando solo X_train.
+
+        - Transform: Reducir X_train y X_val a 500 dims.
+
+        - DNN: Entrenar red densa (500 -> 256 -> 64 -> 4).
+
+- Guardado: src/saved_models/text_1d_best.pth.
+
+**Rama de Audio (Responsable: Uziel)**
+- Audio 2D: CNN clásica (tipo VGG) sobre imágenes de espectrogramas. Guarda audio_2d_best.pth.
+
+- Audio 1D: DNN sobre features numéricos. Guarda audio_1d_best.pth.
+
+
+---
+
+## 6. La Fusión / Stacking (Fase 3-B)
+Aquí es donde ocurre la magia del "Model Freezing".
+
+Paso Intermedio: Generación de Meta-Features
+Script: generate_meta_features.py
+
+1. Cargar los 4 modelos (.pth).
+
+2. Ponerlos en modo evaluación:
+
+```Python
+model_text_2d.eval()
+for param in model_text_2d.parameters():
+    param.requires_grad = False  # <--- CONGELADO ❄️
+```
+
+3. Pasar todo el dataset (Train, Val, Test) por los 4 modelos.
+
+4. No queremos la clase final, queremos las probabilidades.
+
+    - Ejemplo salida Texto 2D: [0.1, 0.8, 0.05, 0.05] (Probabilidad de cada emoción).
+
+5. Concatenar los 4 vectores.
+
+    - Total features: 4 modelos x 4 clases = 16 features.
+
+6. Guardar este nuevo dataset pequeño como meta_dataset.csv.
+---
+
+**Entrenamiento del Juez** 
+Script: train_fusion.py
+1. Cargar meta_dataset.csv.
+2. Usar las particiones del master_split.csv.
+3. Entrenar una Regresión Logística o una Red Neuronal muy simple (Perceptrón).
+
+    - Input: 16 probabilidades.
+
+    - Target: Emoción real.
+
+4. Este modelo aprenderá a decir: "El modelo de Audio miente mucho en canciones tristes, mejor le hago caso al de Texto".
+
 
 **Métricas de Evaluación** 
 
@@ -99,18 +170,22 @@ Para cada modelo (y el final), debemos reportar:
 - Matriz de Confusión: Para ver si confunde "Angry" con "Happy" (High Arousal) o "Sad" con "Relaxed" (Low Arousal).
 - F1-Score por Clase: Importante si hay desbalance leve.
 
-### 5. Checklist de Entregables (Fase 3)
+6. Entregables Finales y MétricasPara la tesis, presentaremos una tabla de resultados basada en el Test Set (15%):
 
-Al finalizar esta fase, debemos tener en la carpeta models/saved/:
+| Modelo | Accuracy | F1-Score | Observación |
+|--------|----------|----------|-------------|
+| Aleatorio | 25.0% | 0.25 | Línea base mínima. |
+| Texto 1D (DNN) | ~35–40% | ... | Detecta palabras clave. |
+| Texto 2D (CNN) | ~45–50% | ... | Entiende contexto. |
+| Audio 1D (DNN) | ... | ... | En proceso de evaluación. |
+| Audio 2D (CNN) | ... | ... | En proceso de evaluación. |
+| FUSIÓN (Stacking) | ~55–65% | ... | El objetivo final. |
 
-- [ ] text_2d_cnn.pth (Modelo pesado de Texto)
 
-- [ ] text_1d_dnn.pth (Modelo ligero de Texto)
-
-- [ ] audio_2d_cnn.pth (Modelo pesado de Audio)
-
-- [ ] audio_1d_dnn.pth (Modelo ligero de Audio)
-
-- [ ] fusion_meta_learner.pkl (El cerebro final)
-
-- [ ] reporte_resultados.md (Tabla comparativa de accuracies).
+** Checklist de Inicio para Fase 3** 
+- [ ] Generar src/ProcessData/make_splits.py y correrlo para tener el master_split.csv.
+- [ ] Crear el archivo src/Models/utils.py (Clase Dataset que lee el split maestro).
+- [ ] Programar train_text_1d.py y los pesos entrenados (Brenda).
+- [ ] Programar train_text_2d.py y los pesos entrenados(Brenda).
+- [ ] Programar train_audio_1d.py y los pesos entrenados(Uzi).
+- [ ] Programar train_audio_2d.py y los pesos entrenados(Uzi).
