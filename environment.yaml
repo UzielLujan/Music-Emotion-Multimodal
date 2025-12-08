@@ -1,5 +1,7 @@
 name: mem-env
 channels:
+  - pytorch
+  - nvidia
   - conda-forge
   - defaults
 
@@ -21,10 +23,15 @@ dependencies:
   - sentencepiece
   - ftfy
   - pyarrow
+  - pytorch
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=12.1         # Asegura compatibilidad con PyTorch y GPU
 
   - pip:
       - python-dotenv
       - transformers            # Para cuando lleguemos al modelado de texto
+      - accelerate              # Para manejo eficiente de modelos grandes
       - lyricsgenius            # Versión moderna compatible con Py3.11
       - spotipy                 # Para ExtractDataV2 (Paso 1)
       - langdetect              # Para ExtractDataV2 (Paso 2)

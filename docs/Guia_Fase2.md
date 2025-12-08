@@ -267,4 +267,128 @@ def get_embedding(text, model, device='cpu'):
 
 - **Acción**: Si encuentras que se necesita una instalación específica para habilitar la GPU, por favor actualiza el `environment.yaml` o agrega una nota en el código, no solo con esa dependencia en especifico, sino con cualquier otra que sea necesaria. Esto es vital para que Uzi pueda correr el pipeline completo en GPU sin problemas con el entorno adecuado.
 
-## 6. Eso es todo por ahora!
+
+## 📘 Manual de Integración: Módulo de Texto
+De: Brenda Para: Uziel Objetivo: Replicar el pipeline de procesamiento de texto (TF-IDF y BERT Embeddings) en tu máquina local usando GPU.
+
+### 1. Configuración del Entorno (CRÍTICO ⚠️)
+Para que el procesamiento de BERT no tarde horas, necesitamos asegurar que PyTorch reconozca tu tarjeta gráfica (GPU).
+
+#### Paso A: Actualizar environment.yaml
+Asegúrate de que tu archivo environment.yaml tenga estos canales y dependencias específicas para GPU (reemplaza o verifica lo que tengas):
+
+YAML
+```bash
+name: mem-env
+channels:
+  - pytorch           # Canal oficial
+  - nvidia            # Drivers CUDA
+  - conda-forge
+  - defaults
+
+dependencies:
+  # ... (resto de librerías: pandas, numpy, librosa, etc.) ...
+  - ftfy              # Limpieza de texto
+  - pyarrow           # Lectura de parquets
+  
+  # --- BLOQUE GPU ---
+  - pytorch
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=12.1 # Fuerza la descarga de la versión compatible con GPU
+  
+  - pip:
+      - transformers
+      - accelerate    # Optimización para HuggingFace
+``` 
+#### Paso B: Reinstalar el Entorno
+Ejecuta esto en tu terminal para aplicar los cambios limpios:
+
+```bash
+conda activate base
+conda env remove -n mem-env
+conda env create -f environment.yaml
+conda activate mem-env
+```
+#### Paso C: Verificar GPU
+Corre este mini-script en Python para confirmar que estamos listos:
+
+```Python
+import torch
+print(f"¿Detecta GPU?: {torch.cuda.is_available()}")
+# Si dice "True", ¡ya ganamos! 
+```
+
+## 2. Ejecución del Pipeline de Texto
+No necesitas correr los scripts individuales (cleaning.py, features_1d.py, etc.). He creado un Orquestador Maestro que hace todo en orden.
+
+Comando a ejecutar: Desde la raíz del proyecto:
+```Python
+python src/ProcessData/run_text_pipeline.py
+```
+¿Qué va a pasar?
+
+Limpieza: Genera textos limpios para TF-IDF y BERT.
+
+Rama 1D: Crea el vector TF-IDF (vocabulario 3,000).
+
+Rama 2D: Descarga DistilBERT y genera los embeddings (Tensores).
+
+Nota: Si tienes GPU, tardará unos 15-20 mins. Si usas CPU, tardará horas.
+
+## 3. Salidas Generadas (Los Archivos) 
+Una vez que termine el script, encontrarás los siguientes archivos en data/. Estos son los insumos para la Fase 3 (Entrenamiento).
+
+- A. Texto Limpio (Intermedio)
+    - Ruta: data/interim/lyrics_cleaned.parquet
+
+    - Formato: .parquet (Usamos Parquet porque CSV rompe los textos con comas y saltos de línea).
+
+    - Contenido:
+
+        * clean_lyrics_tfidf: Texto plano, minúsculas, sin stopwords (para DNN).
+
+        * clean_lyrics_bert: Texto con estructura, mayúsculas y puntuación (para CNN).
+
+- B. Features 1D (Estadísticos)
+    - Ruta: data/processed/features_1d/features_text_1d.parquet
+
+    - Formato: .parquet
+
+    - Contenido: Matriz dispersa de TF-IDF.
+
+    - Uso: Entrada para el modelo TextDNN (Red Densa).
+
+- C. Features 2D (Embeddings Profundos)
+    - Ruta: data/processed/features_2d/embeddings/
+
+    - Archivos:
+
+    1. embeddings_2d.npy: El tensor pesado de datos.
+
+        - Shape: (N_canciones, 256, 768).
+
+        - 256: Longitud de secuencia (Tiempo).
+
+        - 768: Dimensiones de BERT.
+
+    2. embeddings_ids.npy: Lista de IDs.
+
+        - Formato: .npy (NumPy Binary). Es el estándar para guardar tensores multidimensionales.
+
+        - Uso: Entrada para el modelo TextCNN (Red Convolucional).
+
+## 4. Troubleshooting (Si algo falla) 🛠️
+- Error: CUDA Out of Memory:
+
+    - Significa que la GPU se llenó.
+
+    - Solución: Ve a src/ProcessData/text/embeddings.py y baja el BATCH_SIZE de 32 a 16 u 8.
+
+- Error: FileNotFoundError: aligned_metadata.csv:
+
+    - Asegúrate de haber corrido el paso de alineación de metadatos antes de correr el de texto.
+
+- Error leyendo Parquet:
+
+    - Asegúrate de haber instalado pyarrow (pip install pyarrow o vía conda).
