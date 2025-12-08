@@ -9,24 +9,18 @@ def generate_bert_embeddings(
         input_path: Path, 
         output_dir: Path, 
         model_name: str = "distilbert-base-uncased",
-        max_length: int = 256,  # 256 es el balance ideal Memoria/Cobertura que discutimos
+        max_length: int = 256,  # 256 es el balance ideal Memoria/Cobertura
         batch_size: int = 32,
         device_str: str = None
     ):
     """
     Genera embeddings 2D usando un modelo Transformer (BERT/DistilBERT).
-    Diseñado para correr en GPU de forma eficiente.
+    Diseñado para correr en GPU de forma eficiente y generar input para CNN.
     
-    Args:
-        input_path (Path): Ruta al archivo .parquet limpio.
-        output_dir (Path): Ruta donde se guardarán los .npy.
-        model_name (str): HuggingFace model hub name.
-        max_length (int): Longitud de secuencia (tokens).
-        batch_size (int): Tamaño del lote (reducir si hay error de VRAM).
-        device_str (str): 'cuda' o 'cpu'. Si es None, detecta auto.
+    Salida: Tensor 3D (N_samples, Max_Length, Hidden_Dim) -> (N, 256, 768)
     """
     
-    # 1. Configuración de Dispositivo (Filosofía #4)
+    # 1. Configuración de Dispositivo
     if device_str:
         device = torch.device(device_str)
     else:
@@ -48,9 +42,18 @@ def generate_bert_embeddings(
         raise ImportError(f"Error leyendo el archivo. Asegúrate de tener pyarrow/fastparquet instalado.\n{e}")
 
     # Validar columna de texto (Versión BERT conserva estructura)
+    # ESTANDARIZACIÓN: Buscamos específicamente la columna limpia para BERT
     col_text = "clean_lyrics_bert"
+    
     if col_text not in df.columns:
-        raise ValueError(f"Falta la columna '{col_text}'. Ejecuta cleaning.py primero.")
+        # Fallback inteligente
+        if 'lyrics' in df.columns:
+            print(f"⚠️ Advertencia: No se halló '{col_text}', usando 'lyrics'.")
+            col_text = 'lyrics'
+        else:
+            raise ValueError(f"Falta la columna '{col_text}'. Ejecuta cleaning.py primero.")
+
+    print(f"[Embeddings] Usando columna de texto: '{col_text}'")
 
     # Convertir a lista (más rápido que iterar pandas)
     texts = df[col_text].fillna("").astype(str).tolist()
@@ -91,7 +94,7 @@ def generate_bert_embeddings(
             return_tensors="pt"
         )
         
-        # B. Mover inputs a GPU (Filosofía #4)
+        # B. Mover inputs a GPU
         input_ids = encoded_input["input_ids"].to(device)
         attention_mask = encoded_input["attention_mask"].to(device)
         
@@ -100,12 +103,13 @@ def generate_bert_embeddings(
             outputs = model(input_ids, attention_mask=attention_mask)
             
             # last_hidden_state shape: (Batch, Seq_Len, Hidden_Dim)
+            # Esto guarda TODA la secuencia (ideal para CNNs)
             sequence_output = outputs.last_hidden_state
             
             # D. Mover a CPU inmediatamente y convertir a numpy float32
             all_embeddings.append(sequence_output.cpu().numpy().astype(np.float32))
             
-            # Limpieza explícita de caché de GPU (opcional, ayuda en bucles largos)
+            # Limpieza explícita de caché de GPU
             del input_ids, attention_mask, outputs, sequence_output
 
     # 5. Concatenar y Guardar
@@ -127,12 +131,5 @@ def generate_bert_embeddings(
     else:
         print(" Error: No se generaron embeddings.")
 
-# Bloque de prueba (solo se ejecuta si corres este archivo directamente)
 if __name__ == "__main__":
-    # Configuración simulada basada en tu estructura de carpetas
-    ROOT = Path(__file__).resolve().parents[3] # Sube hasta la raiz del proyecto
-    INPUT_FILE = ROOT / "data" / "interim" / "lyrics_cleaned.parquet"
-    OUTPUT_DIR = ROOT / "data" / "processed" / "features_2d" / "embeddings"
-    
-    # Prueba rápida
-    generate_bert_embeddings(INPUT_FILE, OUTPUT_DIR, max_length=128, batch_size=8)
+    pass

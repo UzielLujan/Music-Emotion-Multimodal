@@ -6,9 +6,9 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import numpy as np
 
 def generate_text_1d_features(
-        clean_file_path: Path,     # <--- CAMBIO AQUÍ: Antes se llamaba 'clean_tfidf_csv_path'
-        output_path: Path,         # <--- CAMBIO AQUÍ: Antes se llamaba 'output_csv_path'
-        max_vocab_size=3000,       # <--- CAMBIO AQUÍ: Nuevo argumento para cumplir con el Paper
+        clean_file_path: Path,     
+        output_path: Path,         
+        max_vocab_size=3000,       
         format='parquet'):
     """
     Genera la representación vectorial base (TF-IDF) preparando el terreno
@@ -26,9 +26,16 @@ def generate_text_1d_features(
         df = pd.read_csv(clean_file_path)
 
     # Validar nombre de columna de texto
+    # ESTANDARIZACIÓN: Siempre busca esta columna específica
     col_text = "clean_lyrics_tfidf"
+    
     if col_text not in df.columns:
-        raise ValueError(f"Falta la columna '{col_text}' en el archivo de entrada.")
+        # Fallback de seguridad por si acaso
+        if 'lyrics' in df.columns:
+            print(f"⚠️ Advertencia: No se halló '{col_text}', usando 'lyrics' como fallback.")
+            col_text = 'lyrics'
+        else:
+            raise ValueError(f"Falta la columna '{col_text}' en el archivo de entrada.")
 
     # Asegurar que sean strings y llenar nulos
     corpus = df[col_text].fillna("").astype(str)
@@ -77,6 +84,5 @@ def generate_text_1d_features(
     print(f"   Shape: {df_out.shape}")
     print("   ⚠️ RECUERDA: El filtro Chi-cuadrado se aplicará en el entrenamiento.")
 
-# Bloque de prueba (solo si ejecutas este script directo)
 if __name__ == "__main__":
     pass
