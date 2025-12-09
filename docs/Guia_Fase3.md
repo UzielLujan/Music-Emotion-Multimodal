@@ -1,28 +1,41 @@
 
 # Guía de Ejecución: Fase 3 (Modelado y Entrenamiento)
-**Fecha**: Diciembre 2025 
+
+
 **Contexto**: Construcción del "Stacking Ensemble" Multimodal (Audio + Texto). 
+
 **Entradas**: Datos procesados en Fase 2 (.npy Embeddings, .parquet Features, .npy Espectrogramas).
 
 ---
-
 ## 1. Arquitectura y Filosofía de Trabajo
-No entrenaremos una red gigante "End-to-End". Usaremos la estrategia de Stacking Ensemble.
+No entrenaremos una red gigante "End-to-End". Usaremos la estrategia de **Stacking Ensemble** adaptada a la metodología del paper base.
 
 El Flujo de Trabajo en 2 Etapas:
 
-Etapa de Expertos (Nivel 0): Entrenamos 4 modelos independientemente. Cada uno se vuelve especialista en su dominio. Al terminar, guardamos sus "cerebros" (pesos .pth) y los congelamos.
+**Etapa de Expertos (Nivel 0):** Entrenamos **2 Redes Combinadas** (Audio Network y Text Network) independientemente. Cada red se especializa en su modalidad y fusiona internamente sus características (1D + 2D). Al terminar, guardamos sus "cerebros" (pesos .pth) y los congelamos.
 
-Etapa de Fusión (Nivel 1): Usamos los 4 modelos congelados para generar predicciones sobre el set de validación. Entrenamos un "Juez" (Meta-Learner) que aprende a ponderar esas predicciones para dar el veredicto final.
+**Etapa de Fusión (Nivel 1):** Usamos los 2 modelos congelados para generar predicciones (probabilidades) sobre el set de validación. Entrenamos un "Juez" (Meta-Learner) que aprende a ponderar esas predicciones para dar el veredicto final.
+
+---
 
 ## 2. Objetivo General
-Entrenar una arquitectura de Stacking Ensemble compuesta por 4 modelos base (Expertos) y 1 meta-modelo (Juez), logrando superar el baseline aleatorio (25% accuracy) y el baseline unimodal.
-La Arquitectura "4 Expertos + 1 Juez"
-1. Experto Texto 2D (Tú): BERT Embeddings $\rightarrow$ CNN-LSTM.
-2. Experto Texto 1D (Tú): TF-IDF $\rightarrow$  Selección Chi² $\rightarrow$ DNN.
-3. Experto Audio 2D (Uziel): Espectrogramas Mel $\rightarrow$ CNN (VGG-ish).
-4. Experto Audio 1D (Uziel): Features Estadísticos (OpenSMILE/Librosa) $\rightarrow$ DNN.
-5. Meta-Learner (Fusión): Predicciones de los 4 expertos $\rightarrow$ Regresión Logística / MLP.
+Entrenar una arquitectura de Stacking Ensemble compuesta por **2 Redes Combinadas** (Audio Network y Text Network) y 1 meta-modelo (Juez), logrando superar el baseline aleatorio (25% accuracy) y el baseline unimodal.
+
+La Arquitectura **2 Redes Combinadas + 1 Juez** (Fidelidad al Paper)
+
+1. **Red Combinada de Texto (Text Network)**:
+   - *Rama 2D:* BERT Embeddings $\rightarrow$ CNN-LSTM/BiGRU.
+   - *Rama 1D:* TF-IDF $\rightarrow$ DNN.
+   - *Fusión Interna:* Concatenación de vectores latentes $\rightarrow$ Softmax (4 probs).
+
+2. **Red Combinada de Audio (Audio Network)**:
+   - *Rama 2D:* Espectrogramas Mel $\rightarrow$ CNN (VGG-ish/ResNet).
+   - *Rama 1D:* Features Estadísticos (HSFs) $\rightarrow$ DNN.
+   - *Fusión Interna:* Concatenación de vectores latentes $\rightarrow$ Softmax (4 probs).
+
+3. **Meta-Learner (Fusión):**
+   - *Input:* 8 Probabilidades (4 de Audio + 4 de Texto).
+   - *Modelo:* Regresión Logística / MLP ligero $\rightarrow$ Predicción Final.
 ---
 
 ## 3. Estructura de Trabajo (src/Models)
