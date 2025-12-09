@@ -211,3 +211,168 @@ graph TD
 [x] Scripts de entrenamiento listos para generar insumos del Stacking.
 
 Siguiente Paso: Ejecutar los scripts de entrenamiento y proceder a crear el Meta-Learner (el modelo que unirá los CSVs de audio y texto).
+
+## Bitácora – Implementación del Modelo de Fusión (Stacking) Multimodal
+📌 Contexto
+El objetivo de esta etapa fue integrar las predicciones de los modelos unimodales:
+    - Experto de Audio (espectrogramas 2D + features 1D)
+
+    - Experto de Texto (embeddings 2D + TF-IDF 1D)
+
+para construir un modelo de fusión basado en stacking, similar al planteado en el artículo base, pero adaptado a la infraestructura del proyecto.
+
+## 📂 1. Estructura de archivos utilizada
+
+Las predicciones de los expertos fueron generadas previamente y almacenadas en:
+```bash
+/Reports/audio_expert/predicciones_audio_TRAIN.csv
+/Reports/audio_expert/predicciones_audio_VAL.csv
+/Reports/audio_expert/predicciones_audio_TEST.csv
+
+/Reports/text_expert/predicciones_text_TRAIN.csv
+/Reports/text_expert/predicciones_text_VAL.csv
+/Reports/text_expert/predicciones_text_TEST.csv
+```
+Cada archivo contiene:
+    - spotify_id
+
+    - Probabilidades por cuadrante:
+
+    - audio → prob_audio_Q1 … prob_audio_Q4
+
+    - texto → prob_text_Q1 … prob_text_Q4
+
+    - true_label (0=Q1, 1=Q2, 2=Q3, 3=Q4)
+
+## 🔧 2. Función load_and_merge() — Construcción del dataset para stacking
+
+Se implementó la función load_and_merge(split, paths) que:
+
+1. Carga las predicciones de audio y texto para el split (TRAIN, VAL, TEST).
+
+2. Realiza un merge por spotify_id.
+
+3. Detecta automáticamente la columna correcta del label
+(true_label, true_label_audio o true_label_text).
+
+4. Construye el vector de features del meta-modelo concatenando:
+
+```css
+[prob_audio_Q1..Q4] + [prob_text_Q1..Q4]
+```
+→ 8 features por muestra
+
+5. Devuelve:
+
+    - X: matriz de features
+
+    - y: etiquetas verdaderas
+
+    - ids: lista de spotify_id
+
+Esto garantiza un dataset limpio, consistente y sin fuga de información.
+
+## 🧩 3. Definición del modelo de fusión – FusionNet
+
+Se entrenó un modelo sencillo pero eficiente para stacking:
+
+```Python
+FusionNet(in_features=8, num_classes=4)
+```
+
+Arquitectura:
+- Linear(8 → 32)
+- ReLU
+- Dropout(0.3)
+- Linear(32 → 4)
+- Softmax implícito a través del criterio CrossEntropyLoss.
+
+Este clasificador aprende relaciones entre:
+
+- Probabilidades acústicas
+
+- Probabilidades semánticas
+
+- Interacciones entre cuadrantes
+
+## 🚀 4. Entrenamiento del meta-modelo
+
+El entrenamiento se realizó sobre X_train, y_train, validando en X_val, y_val.
+
+Detalles:
+
+- Optimizador: Adam
+
+- Learning rate: 1e-3
+
+- Early stopping basado en pérdida de validación
+
+- Entrenamiento rápido (dimensión baja: 8 features)
+
+Una vez completado, se evaluó sobre X_test, y_test.
+
+## 📊 5. Resultados del modelo de fusión
+
+Los valores exactos obtenidos:
+```makefile
+Accuracy: 75.13%
+Macro-F1: 0.7127
+Weighted-F1: 0.7475
+```
+F1 por clase:
+
+Clase	F1-score
+Q1 – Happy	0.7279
+Q2 – Angry	0.7103
+Q3 – Sad	0.8506
+Q4 – Relaxed	0.5620
+Observaciones relevantes:
+
+- La fusión supera el rendimiento de los modelos unimodales (audio y texto).
+
+- Especialmente mejora el rendimiento en:
+
+    - Q2 (Angry)
+
+    - Q3 (Sad)
+
+    - Q4 (Relaxed), la clase más difícil por desbalance.
+
+- Mantiene un buen desempeño en Q1.
+
+- La meta-representación es estable y captura información complementaria entre modales.
+
+## 🖼 6. Generación y guardado de resultados
+
+Se guardaron los outputs del modelo de fusión en:
+```bash
+/Reports/fusion_model/
+    classification_report.txt
+    confusion_matrix.csv
+    confusion_matrix.png
+```
+
+Incluye:
+
+- Reporte de clasificación completo
+
+- Matriz de confusión tabular
+
+- Heatmap visual en PNG
+
+- Esto asegura reproducibilidad y trazabilidad de experimentos.
+
+## ⭐ 7. Conclusión general del stacking
+
+El stacking permitió:
+
+- Combinar fortalezas de ambos expertos.
+
+- Reducir errores sistemáticos de cada modal.
+
+- Mejorar el desempeño general del sistema.
+
+- Obtener resultados más estables y alineados con el comportamiento esperado en MER multimodal.
+
+La implementación actual usa stacking simple con splits fijos (train/val/test).
+En caso de requerir estricta reproducibilidad del artículo, puede extenderse a un esquema 5-fold cross-validated stacking.
