@@ -6,12 +6,12 @@
 
 ---
 
-## 🎯 Objetivo General
+## Objetivo General
 Transformar las letras de canciones crudas (`aligned_metadata.csv`) y los audios procesados en un **Dataset Maestro Multimodal** listo para entrenar una Red Neuronal Híbrida (Audio + Texto).
 
 ---
 
-## 🛠️ 1. Limpieza y Normalización de Texto
+## 1. Limpieza y Normalización de Texto
 **Script:** `src/ProcessData/text/cleaning.py`
 
 Se detectó una contaminación significativa de caracteres no latinos (Kanji, Hangul, Cirílico, Emojis) en el dataset original.
@@ -27,7 +27,7 @@ Se detectó una contaminación significativa de caracteres no latinos (Kanji, Ha
 
 ---
 
-## 🧬 2. Extracción de Features de Texto (Feature Engineering)
+## 2. Extracción de Features de Texto (Feature Engineering)
 **Orquestador:** `src/ProcessData/run_text_pipeline.py`
 
 ### A. Rama Tabular (1D)
@@ -46,12 +46,12 @@ Se detectó una contaminación significativa de caracteres no latinos (Kanji, Ha
 
 ---
 
-## 🔗 3. Ensamblaje del Dataset Maestro
+## 3. Ensamblaje del Dataset Maestro
 **Script:** `src/ProcessData/create_master_dataset.py`
 
 Este script es el corazón de la preparación de datos. Su función es unificar fuentes heterogéneas (CSV, Parquet, NPY, Imágenes) en un índice maestro confiable.
 
-🔧 Funcionalidades Clave
+Funcionalidades Clave
 1. Unificación de Metadata: Fusiona aligned_metadata.csv con las features tabulares de audio (features_audio_1d.csv) y texto (features_text_1d.parquet).
 
 2. Validación de Integridad: Verifica físicamente que existan los archivos .npy (espectrogramas) para cada canción. Si falta el archivo, la canción se descarta.
@@ -67,7 +67,7 @@ Este script es el corazón de la preparación de datos. Su función es unificar 
 Salida: data/processed/master_dataset.csv
 ---
 
-## 🏗️ 4. Infraestructura de Carga (PyTorch)
+##  4. Infraestructura de Carga (PyTorch)
 **Script:** `src/Loaders/dataset.py`
 
 Se creó la clase `MultimodalDataset` que maneja la complejidad de leer 4 modalidades simultáneamente.
@@ -77,12 +77,20 @@ Se creó la clase `MultimodalDataset` que maneja la complejidad de leer 4 modali
     * *Audio 2D:* Lee archivos individuales `.npy` (espectrogramas) desde disco.
     * *Texto 2D:* Usa **Memory Mapping** (`mmap_mode='r'`) para leer la matriz gigante de Embeddings sin saturar la RAM.
 * **Auto-adaptable:** Detecta automáticamente las columnas de MFCCs y TF-IDF.
+* **Filtrado Dinámico (Actualización)**: Ahora acepta una lista specific_text_cols. Si se proporciona, el dataset ignora el resto de columnas TF-IDF, asegurando consistencia entre Train/Val/Test tras la selección de características.
+* **Corrección de Dimensiones**: Se ajustaron los tensores en '__getitem__:
+    - Audio: Se agrega dimensión de canal (unsqueeze(0)) -> [1, 128, 128].
+    - Texto: Se elimina dimensión extra y se transpone para Conv1d -> [768, 256].
 * **Corrección de Rutas:** Soluciona automáticamente las diferencias entre rutas relativas del CSV y la ubicación real en `processed/`.
 
 ## 5. Pipeline de Carga (Data Loaders)
 **Script:**  src/Models/utils.py
+Define cómo el sistema alimenta a las redes neuronales durante el entrenamiento e implementa la selección de características estadística.
+**Optimización con Chi-Cuadrado ($\chi^2$)**
+Se implementó SelectKBest dentro de get_dataloaders para reducir el ruido del TF-IDF.
+    - Prevención de Data Leakage: El ajuste (.fit) se realiza exclusivamente sobre el conjunto de TRAIN.
+    - Propagación: Las columnas seleccionadas (Top-K features) se pasan como argumento a los datasets de Validación y Test.
 
-Define cómo el sistema alimenta a las redes neuronales durante el entrenamiento.
 📦 Clase MultimodalDatasetEsta clase hereda de torch.utils.data.Dataset y maneja la complejidad de cargar 4 tipos de datos simultáneamente para una sola canción:
 
 | Tipo de Dato | Fuente | Procesamiento en `__getitem__` | Tensor Shape Resultante |
@@ -90,7 +98,7 @@ Define cómo el sistema alimenta a las redes neuronales durante el entrenamiento
 | Audio 2D | Archivo `.npy` individual | Carga espectrograma → `unsqueeze(0)` | `(1, 128, 128)` |
 | Audio 1D | Columna CSV | Normalización (si aplica) | `(34,)` |
 | Texto 2D | Matriz en memoria | Busca índice → Transpone de `(Seq, 768)` a `(768, Seq)` | `(768, 256)` |
-| Texto 1D | Columna CSV | Carga vector TF-IDF / Metadatos | `(Dim_variable,)` |
+| Texto 1D | Columna CSV | Carga vector TF-IDF / Metadatos | `(k_features,)` |
 
 ## 6. Arquitectura de los Modelos (Deep Learning)
 **Script:** src/Models/definitions.py
@@ -129,9 +137,10 @@ Se implementó una Arquitectura Híbrida (CRNN + Attention) para ambos expertos.
 
     -  Similar al audio, analiza la narrativa de la letra a lo largo del tiempo.
 
-4. Rama Tabular (Dense):
+4. Rama 1D (Dense):
 
     - Procesa metadatos y vectores TF-IDF.
+    - Cambio: La capa de entrada ya no es fija (26), sino parametrizable (text_1d_dim) para adaptarse al número de features seleccionadas por Chi-cuadrado.
 
 5. Fusión: Concatena las ramas → Clasificador Final.
 
