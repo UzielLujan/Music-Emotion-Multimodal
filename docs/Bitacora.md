@@ -211,5 +211,3 @@ graph TD
 [x] Scripts de entrenamiento listos para generar insumos del Stacking.
 
 Siguiente Paso: Ejecutar los scripts de entrenamiento y proceder a crear el Meta-Learner (el modelo que unirá los CSVs de audio y texto).
-
-###
