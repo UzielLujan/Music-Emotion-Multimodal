@@ -1,0 +1,12 @@
+Classification Report — XGBoost
+
+              precision    recall  f1-score   support
+
+    Q1_Happy     0.7012    0.7718    0.7348       298
+    Q2_Angry     0.7260    0.6823    0.7034       299
+      Q3_Sad     0.8083    0.8490    0.8282       298
+  Q4_Relaxed     0.7021    0.4459    0.5455        74
+
+    accuracy                         0.7430       969
+   macro avg     0.7344    0.6873    0.7030       969
+weighted avg     0.7419    0.7430    0.7394       969

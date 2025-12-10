@@ -1,0 +1,12 @@
+Classification Report — Red densa Lineal
+
+              precision    recall  f1-score   support
+
+    Q1_Happy     0.6911    0.7282    0.7092       298
+    Q2_Angry     0.7055    0.6890    0.6971       299
+      Q3_Sad     0.7887    0.8893    0.8360       298
+  Q4_Relaxed     0.8148    0.2973    0.4356        74
+
+    accuracy                         0.7327       969
+   macro avg     0.7500    0.6509    0.6695       969
+weighted avg     0.7350    0.7327    0.7236       969

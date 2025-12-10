@@ -1,0 +1,10 @@
+              precision    recall  f1-score   support
+
+  Happy (Q1)       0.59      0.53      0.56       298
+  Angry (Q2)       0.56      0.56      0.56       299
+    Sad (Q3)       0.60      0.69      0.64       298
+Relaxed (Q4)       0.42      0.35      0.38        74
+
+    accuracy                           0.57       969
+   macro avg       0.54      0.53      0.54       969
+weighted avg       0.57      0.57      0.57       969
