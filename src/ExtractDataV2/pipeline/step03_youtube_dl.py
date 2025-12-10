@@ -54,7 +54,7 @@ def download_one_track(artist, track_name, output_path):
         'postprocessor_args': [
             '-ss', '30', 
             '-t', '30' 
-        ],
+        ], # Corta a 30 segundos desde el segundo 30 pues es lo más probable que contenga la parte relevante 
         'quiet': True,
         'no_warnings': True,
         'noplaylist': True,
