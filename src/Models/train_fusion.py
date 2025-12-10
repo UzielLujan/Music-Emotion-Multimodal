@@ -158,7 +158,76 @@ def train_fusion(epochs=40, batch_size=128, lr=1e-3, device=None):
 
 
 # ----------------------------------------------------------
+# ENTRENAMIENTO XGBOOST SIMPLE
+# ----------------------------------------------------------
+def train_fusion_xgb_simple():
+    paths = get_project_paths()
+
+    print("📁 Proyecto:", paths["ROOT"])
+
+    # === 1. Cargar datos ===
+    X_train, y_train, _ = load_and_merge("TRAIN", paths)
+    X_val, y_val, _     = load_and_merge("VAL",   paths)
+    X_test, y_test, ids_test = load_and_merge("TEST", paths)
+
+    # Concatenar TRAIN + VAL
+    X_full = np.concatenate([X_train, X_val], axis=0)
+    y_full = np.concatenate([y_train, y_val], axis=0)
+
+    print("✔ X_full:", X_full.shape, "| y_full:", y_full.shape)
+
+    # === 2. Modelo XGBoost ===
+    xgb = XGBClassifier(
+        n_estimators=300,
+        learning_rate=0.05,
+        max_depth=4,
+        subsample=0.9,
+        colsample_bytree=0.9,
+        objective="multi:softprob",
+        num_class=4,
+        eval_metric="mlogloss",
+    )
+
+    print("🚀 Entrenando XGBoost Fusion Model...")
+    xgb.fit(X_full, y_full)
+
+    # === 3. Evaluar en TEST ===
+    y_pred = xgb.predict(X_test)
+    test_acc = accuracy_score(y_test, y_pred)
+
+    print("\n🎯 TEST Accuracy:", round(test_acc, 4))
+
+    report = classification_report(y_test, y_pred, digits=4)
+    print("\n📊 CLASSIFICATION REPORT:\n", report)
+
+    # === 4. Guardar reportes ===
+    out_dir = paths["REPORTS"] / "fusion_xgboost_simple"
+    out_dir.mkdir(exist_ok=True)
+
+    with open(out_dir / "classification_report.txt", "w") as f:
+        f.write(report)
+
+    cm = confusion_matrix(y_test, y_pred)
+    quadrant_names = ["Q1_Happy", "Q2_Angry", "Q3_Sad", "Q4_Relaxed"]
+
+    plt.figure(figsize=(6, 5))
+    sns.heatmap(cm, annot=True, fmt="d",
+                xticklabels=quadrant_names,
+                yticklabels=quadrant_names,
+                cmap="Blues")
+    plt.title("Matriz de Confusión — XGBoost Fusion")
+    plt.savefig(out_dir / "confusion_matrix.png", dpi=300, bbox_inches="tight")
+    plt.close()
+
+    # === 5. Guardar modelo ===
+    model_path = paths["SAVED"] / "fusion_xgb_simple.json"
+    xgb.save_model(model_path)
+    print("📁 Modelo guardado en:", model_path)
+
+
+# ----------------------------------------------------------
 # CLI
 # ----------------------------------------------------------
 if __name__ == "__main__":
     train_fusion()
+    train_fusion_xgb_simple()
