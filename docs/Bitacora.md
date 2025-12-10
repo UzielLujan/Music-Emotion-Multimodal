@@ -376,3 +376,251 @@ El stacking permitió:
 
 La implementación actual usa stacking simple con splits fijos (train/val/test).
 En caso de requerir estricta reproducibilidad del artículo, puede extenderse a un esquema 5-fold cross-validated stacking.
+
+
+## **Actualización 12:22 am**
+
+## 1. El propósito fue implementar una arquitectura de stacking multimodal que combine:
+
+    - Experto de Audio
+
+    - Experto de Texto
+
+    para obtener un meta-modelo que aprenda, a partir de probabilidades, la mejor decisión conjunta de clasificación emocional (Q1–Q4).
+
+Este enfoque permite:
+
+    - Integrar dos modalidades muy distintas
+
+    - Evitar mezclar features heterogéneos directamente
+
+    - Aprovechar la información probabilística generada por cada experto
+
+    - Mejorar la robustez y estabilidad del sistema
+
+## 2. Preparación del Dataset para Stacking (Meta-Features)
+
+Cada experto produce predicciones por separado:
+
+    - predicciones_audio_TRAIN/VAL/TEST.csv
+
+    - predicciones_text_TRAIN/VAL/TEST.csv
+
+Cada archivo contiene:
+
+```bash
+spotify_id
+prob_X_Q1
+prob_X_Q2
+prob_X_Q3
+prob_X_Q4
+true_label
+```
+
+Donde X es audio o texto.
+
+Luego se realizó:
+
+✔ Unión por spotify_id
+
+Se concatenaron las probabilidades de ambos expertos, generando 8 meta-features:
+
+```csharp
+[prob_audio_Q1 ... prob_audio_Q4,
+ prob_text_Q1 ... prob_text_Q4]
+ ```
+Esto forma el meta-dataset (nivel 2) usado por el meta-aprendiz.
+
+## 3. Modelos utilizados como Meta-Learner
+
+Se evaluaron dos enfoques:
+
+### A. FusionNet (Modelo Lineal Base)
+
+Un perceptrón de una sola capa:
+```ini
+input_dim = 8
+output_dim = 4
+```
+
+* Ventajas:
+
+    - muy rápido
+
+    - baseline sólido
+
+    - permite verificar que el pipeline funciona
+
+* Limitaciones:
+
+    - sólo aprende relaciones lineales
+
+    - no captura interacciones complejas entre audio y texto
+
+### B. XGBoost (Meta-Learner No Lineal y más Potente)
+
+Configuración utilizada:
+```ini
+n_estimators = 400
+max_depth    = 4
+learning_rate = 0.05
+subsample = 0.8
+colsample_bytree = 0.8
+objective = multi:softprob
+eval_metric = mlogloss
+early_stopping_rounds = 30
+```
+
+Ventajas:
+
+    - captura interacciones no lineales entre audio y texto
+
+    - regularización integrada
+
+    - soporta early stopping
+
+    - generalmente supera a modelos lineales en stacking
+
+## 4. Flujo Completo del Módulo de Fusión
+
+    - Paso 1 — Entrenamiento de Expertos (Audio/Text)
+    Cada red se entrenó con:
+
+        * class weights
+
+        * gradient clipping
+
+        * early stopping
+
+        * L2 regularization
+
+        * LR scheduler
+
+        Se guardaron archivos:
+
+        ```ini
+        predicciones_audio_*.csv
+        predicciones_text_*.csv
+        ```
+
+
+    - Paso 2 — Construcción del Meta-Dataset
+
+        El script/notebook de stacking realiza:
+
+            - Carga de predicciones audio
+
+            - Carga de predicciones texto
+
+            - Unión por spotify_id
+
+            - Generación de matrices:
+
+            ```markdown
+            X_train, y_train
+            X_val,   y_val
+            X_test,  y_test
+            ```
+
+    - Paso 3 — Entrenamiento de FusionNet (Baseline)
+
+            - modelo lineal
+
+            - accuracy y métricas obtenidas
+
+            - sirve como punto de comparación
+
+    - Paso 4 — Entrenamiento de XGBoost (Meta-Learner Final)
+
+            - entrenamiento con early stopping
+
+            - registro de curva de validación (mlogloss)
+
+            - selección automática del número óptimo de árboles
+
+## 📊 5. Evaluación del Meta-Modelo
+
+Se generó:
+
+✔ Classification report:
+
+- Precisión por clase
+
+- Recall por clase
+
+- F1-score
+
+- Promedios macro y weighted
+
+✔ Matriz de confusión
+Se guardó en:
+- .csv
+- .png
+
+✔ Importancia de Features
+
+XGBoost determinó qué modalidad pesa más:
+
+- qué probabilidades de audio y texto son más discriminativas
+
+- qué cuadrantes dependen más de qué experto
+
+✔ Comparación directa FusionNet vs XGBoost
+
+Se generó:
+
+- tabla comparando Precision/Recall/F1 por clase
+
+- gráfico de barras comparativo de F1-score
+
+- accuracy general de ambos modelos
+
+🧾 6. Archivos generados automáticamente
+
+Ubicados en:
+```bash
+reports/fusion_model_xgboost/
+reports/fusion_model/
+src/saved_models/
+```
+
+Incluyen:
+
+* classification_report_xgboost.txt
+
+* confusion_matrix_xgboost.csv
+
+* confusion_matrix_xgboost.png
+
+* comparison_fusionnet_xgboost.csv
+
+* f1_comparison_fusionnet_xgboost.png
+
+* fusion_final.pth o fusion_best.pth
+
+##  7. Conclusiones del Avance
+
+1. El módulo de stacking está completamente operativo.
+
+2. Los meta-features se generan correctamente y sin fugas de información.
+
+3. FusionNet sirve como baseline, pero XGBoost brinda un aprendizaje más flexible.
+
+4. XGBoost resultó superior como meta-learner, especialmente en recall y F1 para clases minoritarias.
+
+5. El pipeline completo queda modular y reutilizable.
+
+6. Esta fase sienta las bases para análisis futuros, como:
+
+    - interpretación modal
+
+    - mejoras en expertos
+
+    - tuning de stacking
+
+    - bagging de meta-modelos
+
+🟢 Estado final del módulo
+
+100% funcional y documentado.
+Listo para integrarse al pipeline final MIR.
