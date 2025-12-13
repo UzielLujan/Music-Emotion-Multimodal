@@ -42,7 +42,9 @@ music-emotion-multimodal/
 │ ├── fusion/
 │ ├── ExtractDataV1/
 │ ├── ExtractDataV2/
-│ └── utils/
+│ ├── Models/
+│ ├── Loaders/
+│ ├── ProcessData/
 │
 ├── notebooks/ # Experimentos exploratorios y prototipos
 │
@@ -93,231 +95,428 @@ conda env create -f environment.yaml
 conda activate mem-env
 ```
 
+## Descarga y construcción del dataset multimodal
 
-# Procesamiento del Conjunto de Datos FMA (Free Music Archive)
-Proyecto MIR — Música, Emociones y Representaciones
+Motivación del rediseño del pipeline de descarga
+El pipeline original basado en FMA + Last.fm presentó una limitación crítica: la intersección entre audio disponible, letras recuperables e idioma inglés resultó insuficiente para un enfoque multimodal escalable.
+Por esta razón, se diseñó un Pipeline V2, cuyo objetivo fue construir un dataset desde cero, controlando explícitamente cada modalidad.
 
-Este documento describe de forma detallada cada uno de los pasos realizados para construir el pipeline de datos basado en el conjunto de datos **FMA (Free Music Archive)**, desde la descarga de metadatos y audio hasta la extracción de características y la preparación del conjunto final para el modelado emocional.
+**Fuentes de datos utilizadas**
 
----
+El dataset multimodal se construyó integrando tres fuentes principales:
 
-# 1. Descarga y estructura del conjunto de datos
+- **Spotify (Kaggle)**
+  Proporciona metadatos musicales y etiquetas emocionales continuas:
+  - valence
+  - arousal
+  - label_quadrant (Happy, Angry, Sad, Relaxed)
 
-## 1.1. Descarga de FMA Small y metadatos
+- **Genius API**
+Utilizada para la recuperación automática de letras en inglés, filtrando:
+  - Canciones instrumentales
+  - Idiomas no deseados
+  - Letras incompletas
 
-Se descargaron dos componentes fundamentales:
+- **YouTube**  Fuente de los archivos de audio (.mp3), descargados directamente a partir del identificador de cada canción.
 
-- `fma_small.zip` — contiene 8,000 pistas de audio en formato `.mp3`.
-- `fma_metadata.zip` — contiene los archivos:
-  - `tracks.csv`
-  - `genres.csv`
-  - `features.csv`
-  - `echonest.csv`
-
-# Estructura de Carpetas del Proyecto MIR (FMA)
-
-Este documento describe la estructura completa de directorios utilizada en el proyecto MIR basado en el dataset FMA (Free Music Archive). Incluye archivos de audio, metadatos, scripts, datos procesados y resultados.
-
-# Estructura Actual del Proyecto MIR (FMA)
-Esta es la estructura de carpetas generada hasta el punto alcanzado en el procesamiento:
-- Descarga de FMA small
-- Descarga de metadatos
-- Filtrado por idioma
-- Extracción de LLDs
-- Generación de espectrogramas
-- Unión de valence y arousal
-
----
-```bash
-ExtractData/
-│
-├── data/
-│   ├── raw/
-│   │   ├── fma_small/                 # Audio original (.mp3)
-│   │   │   ├── 000/
-│   │   │   ├── 001/
-│   │   │   ├── ...
-│   │   │   └── 007/
-│   │   │
-│   │   └── fma_metadata/              # Metadatos descargados
-│   │       ├── tracks.csv
-│   │       ├── features.csv
-│   │       ├── genres.csv
-│   │       └── echonest.csv
-│   │
-│   ├── intermediate/
-│   │   └── feats_raw/                 # LLDs por track (temporales)
-│   │
-│   └── processed/
-│       ├── features/                  # DataFrame final con características
-│       │   └── df_feats.csv
-│       │
-│       └── spectrograms/              # Espectrogramas log-Mel generados
-│           ├── 000001.png
-│           ├── 000002.png
-│           └── ...
-│
-├── scripts/
-│   ├── scripts01_download_fma.py        # Descarga fma_small + metadata
-│   ├── scripts02_filter_english.py      # Filtro por idioma (language_code = 'en')
-│   ├── scripts03_extract_audio_features.py   # Extracción LLD + MFCC
-│   ├── scripts04_generate_spectrograms.py    # Generación de espectrogramas
-│   └── scripts05_merge_valence.py        # Agrega valence + arousal (energy)
-└──
+```text
+Flujo general de descarga (Pipeline V2)
+Spotify (Kaggle)
+      ↓
+metadata_step2_lyrics_clean.csv
+      ↓
+Genius API (letras)
+      ↓
+YouTube (audio)
+      ↓
+Dataset multimodal alineado por spotify_id
 ```
 
-Se verificó que `tracks.csv` tiene **dos niveles de encabezado (MultiIndex)**, mientras que `echonest.csv` tiene **tres niveles**.
+** Scripts de descarga y su función**
 
----
+1. Preparación y curación inicial de metadatos
+Archivo generado
 
-# 2. Identificación del idioma de cada canción
+```bash
+data/raw_v2/metadata_step2_lyrics_clean.csv
+```
+Contiene:
+  - spotify_id
+  - artista
+  - título
+  - valence / arousal
+  - cuadrante emocional
+  - letra cruda (Genius)
 
-El archivo `tracks.csv` contiene una columna clave: ("track", "language_code") 
-que sigue códigos ISO del idioma del artista (en, es, fr, de…).
+Este archivo es el punto de entrada único para todo el pipeline de descarga.
 
-Se desarrolló el script: scripts02_filter_english.py
+2. Descarga distribuida de audio desde YouTube
+
+Para evitar bloqueos por límite de peticiones, la descarga de audio se realizó de forma distribuida entre los integrantes del equipo.
+
+Script principal
+```bash
+src/ExtractDataV2/main.py
+```
+
+Lógica implementada
+
+- Lee un CSV con metadatos (spotify_id, artista, título).
+
+- Genera automáticamente la consulta de búsqueda en YouTube.
+
+- Descarga el audio en formato .mp3.
+
+- Guarda el archivo usando spotify_id como nombre.
+
+- El proceso es incremental: si un archivo ya existe, se omite.
+
+Ejecución típica
+```bash
+python src/ExtractDataV2/main.py
+```
+
+3. Estrategia de descarga paralela
+
+El archivo maestro se dividió en dos partes:
+
+```bash
+data/raw_v2/metadata_part_uzi.csv
+data/raw_v2/metadata_part_brenda.csv
+```
+
+Cada integrante ejecutó el mismo script (main.py), modificando únicamente la variable de entrada:
+
+```python
+CSV_STEP2 = RAW_V2_DIR / "metadata_part_brenda.csv"
+```
+
+Esto permitió:
+
+- Reducir tiempo total de descarga
+
+- Evitar bloqueos de IP por YouTube
+
+- Mantener trazabilidad del progreso
+
+4. Organización de los audios descargados
+
+Los audios se almacenan en una estructura plana:
+
+```bash
+data/raw_v2/audio/
+├── 0AcJ0eX.mp3
+├── 3FZxA91.mp3
+├── ...
+```
+
+Convención:
+
+- Nombre del archivo = spotify_id
+
+- Permite alineación directa con letras y features posteriores.
+
+**Alineación final de modalidades**
+
+Una vez completada la descarga, se ejecuta el script de alineación:
+
+```bash
+src/ProcessData/utils/alignment.py
+bash
 
 Este script:
 
-1. Detecta automáticamente los niveles del encabezado del CSV.
-2. Carga el MultiIndex correctamente.
-3. Verifica que la columna `language_code` existe.
-4. Filtra únicamente los tracks cuyo idioma = `"en"`.
+- Escanea la carpeta de audios descargados.
 
-El resultado es una lista: english_ids = [track_id1, track_id2, ...] 
-con todas las pistas en inglés.
+- Cruza contra metadata_step2_lyrics_clean.csv.
 
----
+- Conserva únicamente canciones con:
 
-# 3. Extracción de características de audio (LLDs y MFCC)
+  - Audio disponible
 
-El script: scripts03_extract_audio_features.py
+  - Letra válida
 
-procesa únicamente los `track_id` en inglés.
+- Genera el archivo intermedio:
 
-Características extraídas:
+```bash
+data/interim/aligned_metadata.csv
+```
 
-- RMS
-- Zero Crossing Rate
-- Spectral Centroid
-- Spectral Bandwidth
-- Spectral Rolloff
-- Chroma STFT
-- MFCC (13 coeficientes)
-- Delta MFCC
-- Delta-Delta MFCC
+Este archivo define el subconjunto final de canciones que entran a la Fase 2 de procesamiento.
 
-Cada archivo `.mp3` se cargó usando **librosa**, y se generó un DataFrame `df_feats` donde:
 
-- filas = track_id
-- columnas = características de audio
+## Procesamiento multimodal y construcción del Dataset Maestro
 
-Ejemplo: df_feats.loc[1234, ["mfcc_1", "mfcc_2", "spectral_centroid", ...]]
+Esta fase corresponde al núcleo de ingeniería de características del proyecto. El objetivo es transformar los datos crudos (audio y letras) en representaciones numéricas organizadas, listas para ser consumidas por modelos de aprendizaje profundo unimodales y posteriormente integradas mediante stacking.
 
+### 2.1 Alineación y validación de datos
 
----
+- Se ejecuta un proceso de alineación por spotify_id entre:
 
-# 4. Generación de espectrogramas (para modelos CNN)
+  - Audios descargados (YouTube).
 
-El script:  genera y guarda espectrogramas log-mel para cada pista en inglés.
-Los espectrogramas se exportan como imágenes `.png` o matrices `.npy` en: data/processed/spectrograms/{track_id}.png
+  - Letras limpias (Genius API).
 
+- Se valida la existencia física de cada archivo requerido.
 
-Parámetros:
+- El resultado es un archivo intermedio:
+  - data/interim/aligned_metadata.csv
 
-- 128 bandas Mel
-- Ventana: 2048
-- Hop length: 512
+Este archivo actúa como lista de control para todas las etapas posteriores, garantizando que solo se procesen canciones con información multimodal completa.
 
-Estos espectrogramas se utilizarán posteriormente para modelos de visión profunda.
+### 2.2 Procesamiento de texto (Rama Textual)
 
----
+Responsable: Brenda Tránsito
 
-# 5. Obtención de características de valence y arousal desde echonest.csv
+- Limpieza y normalización
 
-El archivo `echonest.csv` incluye múltiples grupos de características, entre ellas:
+- Eliminación de etiquetas estructurales ([Chorus], [Verse], etc.).
 
-- `("echonest", "audio_features", "valence")`
-- `("echonest", "audio_features", "energy")` (utilizada como proxy de arousal)
+- Normalización Unicode y filtrado estricto de caracteres no latinos.
 
-Se creó el script: scripts05_merge_valence.py
+- Generación de dos vistas del texto:
 
-Este:
+  - clean_lyrics_tfidf: texto plano para métodos estadísticos.
 
-1. Carga `echonest.csv` con su MultiIndex de 3 niveles.
-2. Extrae únicamente las columnas relevantes:
-   - `valence`
-   - `energy` → renombrada a `arousal`
-3. Une estas columnas al DataFrame `df_feats`.
+  - clean_lyrics_bert: texto estructurado para modelos Transformer.
 
-Resultado final parcial:
+Salida intermedia:
+```bash
+data/interim/lyrics_cleaned.parquet
+```
 
+**Representaciones textuales**
 
-Ahora cada canción tiene:
+**Texto 1D (ligero)**
+- Técnica: TF-IDF + selección de características (Chi-cuadrado, solo para el conjunto de entrenamiento).
+- Dimensionalidad controlada para evitar sparsity excesiva.
 
-- características de audio (LLDs, MFCC)
-- valence
-- arousal
+Salida:
+```bash
+data/processed/features_1d/features_text_1d.parquet
+```
+**Texto 2D (profundo)**
+- Técnica: Embeddings contextuales con DistilBERT.
+- Longitud de secuencia fija (max_length=256).
+- Almacenamiento eficiente mediante:
 
----
+  - embeddings_2d.npy (tensor global)
 
-# 6. Construcción del plano emocional (4 cuadrantes)
+  - embeddings_ids.npy (mapeo por spotify_id)
 
-Como la literatura del artículo base usa un modelo de cuatro emociones, el proyecto utiliza:
+Ubicación:
+```bash
+data/processed/features_2d/embeddings/
+```
 
-| Cuadrante | Valence | Arousal | Emoción |
-|----------|---------|---------|---------|
-| Q1       | +       | +       | Happy / Energetic |
-| Q2       | -       | +       | Angry / Tense |
-| Q3       | -       | -       | Sad |
-| Q4       | +       | -       | Calm / Relaxed |
+### 2.3 Procesamiento de audio (Rama Acústica)
 
-Se implementará en: scripts06_map_emotions.py
+Responsable: Uziel Luján
 
+- Recorte inteligente: selección automática de los 15 segundos más energéticos.
 
-Función:
+- Audio 1D:
 
-- Normaliza valence/arousal
-- Determina el cuadrante
-- Asigna una etiqueta emocional
+  - HSFs derivados de MFCCs, Chroma y ZCR.
 
----
+  - Estadísticos: media y desviación estándar.
 
-# 7. Resultado final
+- Audio 2D:
 
-El dataset final contiene, por cada canción:
+  - Mel-Spectrogramas almacenados como matrices NumPy (.npy).
 
-- `track_id`
-- características acústicas (LLDs, MFCCs)
-- espectrograma
-- `valence`
-- `arousal`
-- `emotion_4Q` (categoría final)
+Salidas:
 
-Este DataFrame está listo para:
+- data/processed/features_1d/features_audio_1d.csv
 
-- entrenamiento de modelos supervisados
-- clasificación emocional
-- análisis comparativo de enfoques de audio, espectrograma y emoción
+- data/processed/features_2d/spectrograms/{spotify_id}.npy
 
----
+### 2.4 Ensamblaje del Dataset Maestro
 
+Script clave:
 
+- src/ProcessData/create_master_dataset.py
 
+Funcionalidades:
 
+- Unión de metadata, features 1D y rutas a features 2D.
 
+- Corrección explícita del desalineamiento entre embeddings y IDs.
 
+- Split estratificado:
 
+  - Train (70%)
 
+  - Validation (15%)
 
+  - Test (15%)
 
+Salida final:
 
+  - data/processed/master_dataset.csv
 
+Este archivo es el índice central del proyecto, utilizado por todos los DataLoaders.
 
+#### Modelos y Arquitecturas Utilizadas
 
+El sistema propuesto implementa un enfoque multimodal para el reconocimiento de emociones musicales, donde cada modalidad (audio y texto) es entrenada de forma independiente y posteriormente integrada mediante una estrategia de fusión por stacking.
 
+Todo el flujo se encuentra desacoplado en tres fases: entrenamiento unimodal, generación de meta-features y entrenamiento del meta-learner.
 
+### 1. Rama de Audio
 
+La rama de audio modela información espectral, temporal y estadística de la señal musical. El objetivo es capturar patrones locales y globales relevantes para la percepción emocional.
 
+Archivos principales utilizados:
 
+- Entrenamiento del modelo de audio
 
+  main_audio.ipynb
+
+- Definición de la arquitectura
+
+  src/Models/definitions.py (clase AudioNetwork)
+
+- Carga de datos multimodales
+
+  src/Models/utils.py (clase MultimodalDataset, función get_dataloaders)
+
+**Características del entrenamiento**
+- Manejo explícito de desbalance de clases mediante class weights.
+
+- Regularización mediante dropout y weight decay.
+
+- Gradient clipping para estabilidad del entrenamiento.
+
+- Early stopping basado en desempeño en validación.
+
+- Exportación de:
+
+  - probabilidades por clase,
+
+  - etiquetas reales,
+
+  - identificadores (spotify_id), para su uso posterior en la fusión.
+
+Los resultados se almacenan en:
+
+  - reports/audio_expert/
+
+
+### 2. Rama de Texto
+
+La rama textual combina información semántica profunda con representaciones léxicas seleccionadas, permitiendo capturar tanto significado contextual como patrones discriminativos de vocabulario.
+
+**Archivos principales utilizados**
+
+- Entrenamiento del modelo de texto
+    
+  main_text.ipynb
+
+- Definición de la arquitectura
+
+  src/Models/definitions.py (clase TextNetwork)
+
+- Carga de datos y selección de características
+
+  src/Models/utils.py
+
+    - selección Chi-cuadrada (SelectKBest)
+
+    - embeddings textuales 2D
+
+    - TF-IDF reducido
+
+**Características del entrenamiento**
+
+- Ponderación de clases para tratar el desbalance.
+
+- Regularización L2.
+
+- Learning rate scheduling (ReduceLROnPlateau).
+
+- Early stopping para evitar sobreajuste.
+
+- Exportación de probabilidades por clase y etiquetas reales.
+
+Los resultados se almacenan en:
+
+- reports/text_expert/
+
+### 3. Generación de Meta-Features (Fase de Stacking)
+
+Una vez entrenados ambos expertos unimodales, se congelan sus pesos y se utilizan únicamente como extractores de decisiones.
+
+Cada modelo produce probabilidades por clase, las cuales se concatenan para formar un nuevo espacio de características de baja dimensión.
+
+**Archivo utilizado** 
+
+- Generación de meta-features
+
+  generate_meta_features.py
+
+Este script:
+
+- carga los modelos entrenados,
+
+- evalúa los conjuntos train, val y test,
+
+- concatena las probabilidades de audio y texto,
+
+### 4. Fusión Multimodal (Stacking)
+
+La integración final se realiza mediante fusión tardía, donde el aprendizaje ocurre a nivel de decisión.
+
+Se implementaron dos variantes de meta-learner, con fines comparativos.
+
+**Opción A: Meta-learner neuronal (baseline)**
+
+- Entrenamiento
+
+  - train_fusion.py
+
+Este modelo sirve como línea base y permite comparar directamente el desempeño frente a métodos más expresivos.
+
+**Opción B: Meta-learner basado en XGBoost**
+
+Para capturar relaciones no lineales entre las predicciones unimodales, se entrenó un modelo de gradient boosting directamente sobre las probabilidades concatenadas.
+
+**Notebook utilizado**
+
+- Entrenamiento y evaluación del stacking
+
+  stacking_fusion.ipynb
+
+En este notebook se realiza:
+
+- carga de predicciones de audio y texto,
+
+- entrenamiento del modelo XGBoost,
+
+- evaluación en train / val / test,
+
+- generación de:
+
+  - classification report,
+
+  - matriz de confusión,
+
+  - análisis de importancia de características.
+
+Los resultados finales se guardan en:
+
+- reports/fusion_model/
+
+5. Justificación del Diseño
+
+Este diseño modular permite:
+
+- evaluar de forma aislada cada modalidad,
+
+- analizar el impacto real de la multimodalidad,
+
+- comparar estrategias de fusión lineales y no lineales,
+
+- y extender el sistema a nuevas modalidades sin rediseñar el pipeline completo.
+
+El uso de stacking facilita una integración interpretable y flexible, alineada con prácticas actuales en Music Information Retrieval (MIR) y aprendizaje multimodal.
