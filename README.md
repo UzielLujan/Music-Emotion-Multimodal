@@ -40,7 +40,6 @@ music-emotion-multimodal/
 │ ├── audio/
 │ ├── text/
 │ ├── fusion/
-│ ├── ExtractDataV1/
 │ ├── ExtractDataV2/
 │ ├── Models/
 │ ├── Loaders/
