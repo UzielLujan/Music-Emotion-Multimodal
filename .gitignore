@@ -7,7 +7,7 @@ data/spectrograms_medium/
 # --- Images files ---
 *.jpg
 *.png
-
+*.pdf
 # --- Compressed files ---
 *.zip
 *.tar.gz
