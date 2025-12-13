@@ -154,6 +154,7 @@ Este archivo es el punto de entrada único para todo el pipeline de descarga.
 Para evitar bloqueos por límite de peticiones, la descarga de audio se realizó de forma distribuida entre los integrantes del equipo.
 
 Script principal
+
 ```bash
 src/ExtractDataV2/main.py
 ```
@@ -171,6 +172,7 @@ Lógica implementada
 - El proceso es incremental: si un archivo ya existe, se omite.
 
 Ejecución típica
+
 ```bash
 python src/ExtractDataV2/main.py
 ```
@@ -221,7 +223,7 @@ Una vez completada la descarga, se ejecuta el script de alineación:
 
 ```bash
 src/ProcessData/utils/alignment.py
-bash
+```
 
 Este script:
 
@@ -259,7 +261,10 @@ Esta fase corresponde al núcleo de ingeniería de características del proyecto
 - Se valida la existencia física de cada archivo requerido.
 
 - El resultado es un archivo intermedio:
-  - data/interim/aligned_metadata.csv
+
+  ```bash
+   data/interim/aligned_metadata.csv
+   ```
 
 Este archivo actúa como lista de control para todas las etapas posteriores, garantizando que solo se procesen canciones con información multimodal completa.
 
@@ -325,16 +330,18 @@ Responsable: Uziel Luján
   - Mel-Spectrogramas almacenados como matrices NumPy (.npy).
 
 Salidas:
-
-- data/processed/features_1d/features_audio_1d.csv
-
-- data/processed/features_2d/spectrograms/{spotify_id}.npy
+```bash
+ data/processed/features_1d/features_audio_1d.csv
+data/processed/features_2d/spectrograms/{spotify_id}.npy
+```
 
 ### 2.4 Ensamblaje del Dataset Maestro
 
 Script clave:
 
-- src/ProcessData/create_master_dataset.py
+```bash
+src/ProcessData/create_master_dataset.py
+```
 
 Funcionalidades:
 
@@ -352,7 +359,9 @@ Funcionalidades:
 
 Salida final:
 
-  - data/processed/master_dataset.csv
+```bash
+data/processed/master_dataset.csv
+```
 
 Este archivo es el índice central del proyecto, utilizado por todos los DataLoaders.
 
@@ -369,16 +378,19 @@ La rama de audio modela información espectral, temporal y estadística de la se
 Archivos principales utilizados:
 
 - Entrenamiento del modelo de audio
-
-  main_audio.ipynb
+  ```bash
+  src/Models/main_audio.ipynb
+  ```
 
 - Definición de la arquitectura
-
+  ```bash
   src/Models/definitions.py (clase AudioNetwork)
+  ```
 
 - Carga de datos multimodales
-
+  ```bash
   src/Models/utils.py (clase MultimodalDataset, función get_dataloaders)
+  ```
 
 **Características del entrenamiento**
 - Manejo explícito de desbalance de clases mediante class weights.
@@ -398,9 +410,9 @@ Archivos principales utilizados:
   - identificadores (spotify_id), para su uso posterior en la fusión.
 
 Los resultados se almacenan en:
-
-  - reports/audio_expert/
-
+  ```bash
+  reports/audio_expert/
+  ```
 
 ### 2. Rama de Texto
 
@@ -409,17 +421,17 @@ La rama textual combina información semántica profunda con representaciones l�
 **Archivos principales utilizados**
 
 - Entrenamiento del modelo de texto
-    
-  main_text.ipynb
-
+  ```bash
+  src/Models/main_text.ipynb
+  ```
 - Definición de la arquitectura
-
+  ```bash
   src/Models/definitions.py (clase TextNetwork)
-
+  ```
 - Carga de datos y selección de características
-
+  ```bash
   src/Models/utils.py
-
+  ```
     - selección Chi-cuadrada (SelectKBest)
 
     - embeddings textuales 2D
@@ -439,8 +451,9 @@ La rama textual combina información semántica profunda con representaciones l�
 - Exportación de probabilidades por clase y etiquetas reales.
 
 Los resultados se almacenan en:
-
-- reports/text_expert/
+```bash
+reports/text_expert/
+```
 
 ### 3. Generación de Meta-Features (Fase de Stacking)
 
@@ -451,9 +464,9 @@ Cada modelo produce probabilidades por clase, las cuales se concatenan para form
 **Archivo utilizado** 
 
 - Generación de meta-features
-
+  ```bash
   generate_meta_features.py
-
+  ```
 Este script:
 
 - carga los modelos entrenados,
@@ -471,9 +484,9 @@ Se implementaron dos variantes de meta-learner, con fines comparativos.
 **Opción A: Meta-learner neuronal (baseline)**
 
 - Entrenamiento
-
-  - train_fusion.py
-
+  ```bash
+  src/Models/stacking_fusion.ipynb
+  ```
 Este modelo sirve como línea base y permite comparar directamente el desempeño frente a métodos más expresivos.
 
 **Opción B: Meta-learner basado en XGBoost**
@@ -483,9 +496,9 @@ Para capturar relaciones no lineales entre las predicciones unimodales, se entre
 **Notebook utilizado**
 
 - Entrenamiento y evaluación del stacking
-
-  stacking_fusion.ipynb
-
+  ```bash
+  src/Models/stacking_fusion.ipynb
+  ```
 En este notebook se realiza:
 
 - carga de predicciones de audio y texto,
