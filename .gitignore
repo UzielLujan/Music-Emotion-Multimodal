@@ -1,18 +1,10 @@
 # --- Data ---
-data/raw/
+data/raw_v2/
 
-# --- Spectrogram images (heavy, regenerate) ---
-data/spectrograms_medium/
-
-# --- Images files ---
-*.jpg
-*.png
-*.pdf
-# --- Compressed files ---
-*.zip
-*.tar.gz
-*.tar
-*.7z
+# Generated / intermediate data (do not version)
+data/processed/
+data/interim/
+data/features/
 
 # --- Audio files ---
 *.mp3
@@ -20,6 +12,18 @@ data/spectrograms_medium/
 *.flac
 *.ogg
 *.webm
+
+# --- Images files ---
+*.jpg
+*.png
+*.pdf
+
+# --- Compressed files ---
+*.zip
+*.tar.gz
+*.tar
+*.7z
+
 # --- Jupyter checkpoints ---
 .ipynb_checkpoints/
 
@@ -39,16 +43,3 @@ __pycache__/
 *.pyo
 *.pyd
 
-# --- Processed data we DO want to keep ---
-# Allow CSVs except those larger than 10 MB
-!data/processed/*.csv
-!data/features/*.csv
-
-# --- Ignore everything else in processed except CSVs ---
-data/processed/*
-data/features/*
-!data/processed/*.csv
-!data/features/*.csv
-
-
-!data/processed/features_1d/*.csv
